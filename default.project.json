@@ -1,5 +1,5 @@
 {
-	"name": "bladeborne-game",
+	"name": "circuitry",
 	"tree": {
 		"$className": "DataModel",
 		"Players": {
