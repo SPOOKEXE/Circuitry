@@ -4,8 +4,9 @@ local Players = game:GetService('Players')
 
 local SystemsContainer = {}
 
-local DEFAULT_TICK_SPEED = 20
+local DEFAULT_TICK_SPEED = 20 -- times / second to update
 local CUSTOM_TICK_SPEED = { }
+local CUSTOM_TICK_SUBSTEPS = { }
 
 local AUTO_TICK_PLAYERS = { }
 local LAST_TICK_PLAYERS = { }
@@ -35,17 +36,29 @@ function Module.SetPlayerTickSpeed( LocalPlayer : Player, stepsPerSecond : numbe
 	CUSTOM_TICK_SPEED[LocalPlayer] = stepsPerSecond
 end
 
-function Module.StepPlayerCircuitTick( LocalPlayer : Player )
-	local index = table.find( AUTO_TICK_PLAYERS, LocalPlayer )
-	if index then
-		return false, 'You cannot use this command whilst your ticks are NOT frozen.'
-	end
+function Module.SetPlayerTickSubsteps( LocalPlayer : Player, substepsPerStep : number )
+	CUSTOM_TICK_SUBSTEPS[LocalPlayer] = substepsPerStep
+end
+
+function Module.GetPlayerTickSubsteps( LocalPlayer )
+	return CUSTOM_TICK_SUBSTEPS[LocalPlayer] or 1
+end
+
+function Module.StepPlayerTick( LocalPlayer : Player )
 
 	error( string.format('Update Player\'s circuit: %s', LocalPlayer.Name) )
+
 end
 
 function Module.OnPlayerAdded( LocalPlayer : Player )
 	Module.EnableAutoUpdateForPlayer(LocalPlayer)
+end
+
+function Module.OnPlayerRemoving( LocalPlayer : Player )
+	Module.DisableAutoUpdateForPlayer( LocalPlayer )
+	LAST_TICK_PLAYERS[LocalPlayer] = nil
+	CUSTOM_TICK_SUBSTEPS[LocalPlayer] = nil
+	CUSTOM_TICK_SPEED[LocalPlayer] = nil
 end
 
 function Module.Start()
@@ -55,19 +68,33 @@ function Module.Start()
 	Players.PlayerAdded:Connect(Module.OnPlayerAdded)
 	Players.PlayerRemoving:Connect(Module.DisableAutoUpdateForPlayer)
 
-	RunService.Heartbeat:Connect(function(_ : number)
-		for _, LocalPlayer in ipairs( AUTO_TICK_PLAYERS ) do
-			if LAST_TICK_PLAYERS[LocalPlayer] and time() < LAST_TICK_PLAYERS[LocalPlayer] then
-				continue
-			end
-			LAST_TICK_PLAYERS[LocalPlayer] = time() + 1 / Module.GetPlayerTickSpeed( LocalPlayer )
+	local function UpdatePlayer( LocalPlayer )
+		if not table.find( AUTO_TICK_PLAYERS, LocalPlayer ) then
+			return
+		end
 
-			local success, err = pcall(Module.StepPlayerCircuitTick, LocalPlayer )
+		if LAST_TICK_PLAYERS[LocalPlayer] and time() < LAST_TICK_PLAYERS[LocalPlayer] then
+			return
+		end
+		LAST_TICK_PLAYERS[LocalPlayer] = time() + (1 / Module.GetPlayerTickSpeed( LocalPlayer ))
+
+		for _ = 1, Module.GetPlayerTickSubsteps( LocalPlayer ) do
+			local success, err = pcall(Module.StepPlayerTick, LocalPlayer )
 			if not success then
 				warn(err)
 				LAST_TICK_PLAYERS[LocalPlayer] = time() + 5
 				-- it errored so let the player know
+				break
 			end
+		end
+	end
+
+	task.spawn(function()
+		while true do
+			for _, LocalPlayer in ipairs( AUTO_TICK_PLAYERS ) do
+				UpdatePlayer( LocalPlayer )
+			end
+			RunService.Heartbeat:Wait()
 		end
 	end)
 end
