@@ -1,40 +1,66 @@
 
-local Players = game:GetService('Players')
-
 local SystemsContainer = {}
+
+local COMMAND_SUCCESS_COLOR = Color3.new(0, 0.6, 0)
+local COMMAND_UNSUCCESSFUL_COLOR = Color3.new( 0.6, 0, 0 )
+
+local COMMAND_DICTIONARY = {
+
+	default = function( LocalPlayer, ... : string )
+		return 'This is not a valid command, run !help [page] to see commands.', COMMAND_UNSUCCESSFUL_COLOR
+	end,
+
+	help = function(LocalPlayer, pageNumber, ...)
+		-- pageNumber = tonumber(pageNumber)
+		-- if not pageNumber then
+		-- 	return ''
+		-- end
+		return [[Available Commands:
+!claim		<< Claim the area where you are standing.
+!unclaim	<< Unclaim any area you have.
+		]], COMMAND_SUCCESS_COLOR
+	end,
+
+	claim = function( LocalPlayer, ... : string )
+		if not SystemsContainer.GameControllerService.CanPlayerRunCommands( LocalPlayer ) then
+			return 'You cannot run commands at this time.', COMMAND_UNSUCCESSFUL_COLOR
+		end
+		local success, err = SystemsContainer.ClaimsService.CreatePlayerClaim( LocalPlayer )
+		if success then
+			return 'Command ran successfully.', COMMAND_SUCCESS_COLOR
+		end
+		return err, COMMAND_UNSUCCESSFUL_COLOR
+	end,
+
+	unclaim = function( LocalPlayer, ... : string )
+		if not SystemsContainer.GameControllerService.CanPlayerRunCommands( LocalPlayer ) then
+			return 'You cannot run commands at this time.', COMMAND_UNSUCCESSFUL_COLOR
+		end
+		local hadClaimedArea = SystemsContainer.ClaimsService.ClearPlayerClaim( LocalPlayer )
+		if hadClaimedArea then
+			return 'Your claim is now removed', COMMAND_SUCCESS_COLOR
+		end
+		return 'You do not have a claimed area.', COMMAND_UNSUCCESSFUL_COLOR
+	end,
+
+} :: { [string] : ( Player, ...string ) -> ( string, Color3 ) }
 
 -- // Module // --
 local Module = {}
 
+function Module.SendMessageToClient( TargetPlayer : Player, message : string, textColor3 : Color3 )
+	print( TargetPlayer.Name, message, textColor3 )
+end
+
 function Module.ParseChatCommand( LocalPlayer : Player, message : string )
 	local splits = string.split(message, ' ')
 	local command = table.remove(splits, 1)
-	if command == 'help' then
-		print(LocalPlayer.Name, ' has used the chat command \'help\'.')
-		--[[
-			commands:
-			- !claim
-			- !unclaim
-			- !tickfreeze
-			- !tickunfreeze
-			- !tickstep
-		]]
-	elseif command == 'claim' then
-		SystemsContainer.ClaimsService.CreatePlayerClaim( LocalPlayer )
-	elseif command == 'unclaim' then
-		SystemsContainer.ClaimsService.ClearPlayerClaim( LocalPlayer )
-	elseif command == 'tickfreeze' then
-		SystemsContainer.CircuitServer.DisableAutoUpdateForPlayer( LocalPlayer )
-	elseif command == 'tickunfreeze' then
-		SystemsContainer.CircuitServer.EnableAutoUpdateForPlayer( LocalPlayer )
-	elseif command == 'tickstep' then
-		SystemsContainer.CircuitServer.StepPlayerCircuitTick( LocalPlayer )
-	else
-		warn('Unsupported chat command; ' .. tostring(command))
-	end
+	local callback = COMMAND_DICTIONARY[command] or COMMAND_DICTIONARY.default
+	local responseText, responseColor = callback( LocalPlayer, unpack(splits) )
+	Module.SendMessageToClient( LocalPlayer, responseText, responseColor)
 end
 
-function Module.OnPlayerAdded( LocalPlayer : Player )
+function Module.SetupPlayerCommandsHook( LocalPlayer : Player )
 
 	LocalPlayer.Chatted:Connect(function(message, recipient)
 		if recipient then
@@ -48,11 +74,6 @@ function Module.OnPlayerAdded( LocalPlayer : Player )
 end
 
 function Module.Start()
-
-	for _, LocalPlayer in ipairs( Players:GetPlayers() ) do
-		task.spawn(Module.OnPlayerAdded, LocalPlayer)
-	end
-	Players.PlayerAdded:Connect(Module.OnPlayerAdded)
 
 end
 

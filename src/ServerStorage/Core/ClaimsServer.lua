@@ -10,15 +10,20 @@ local BASEPLATE_Y_LEVEL = 3
 -- // Module // --
 local Module = {}
 
-function Module.CanPulseInClaim( LocalPlayer : Player, ClaimID : string ) : boolean
+function Module.GetPlayerClaimPermissions( LocalPlayer : Player )
+	error('Claim permissions is not implemented.')
+end
+
+function Module.CanPlayerEditInClaim( LocalPlayer : Player, ClaimOwner : Player )
+	-- local PermissionsDictionary = Module.GetPlayerClaimPermissions( ClaimOwner )
 	return false
 end
 
-function Module.CanEditInClaim( LocalPlayer : Player, ClaimID : string ) : boolean
-	return false
+function Module.GetPlayerClaims( LocalPlayer : Player )
+	return PlayerClaimsCache[ LocalPlayer ]
 end
 
-function Module.CanCreateClaimAtPosition( CharacterPivot : CFrame, claimSize : Vector3 )
+function Module.IsCFrameValidForClaim( CharacterPivot : CFrame, claimSize : Vector3 )
 	local SpawnPosition = Vector3.zero
 	if (CharacterPivot.Position - SpawnPosition).Magnitude < 16 then -- spawn area
 		return false, 'You cannot claim near the spawn.'
@@ -33,15 +38,17 @@ function Module.CanCreateClaimAtPosition( CharacterPivot : CFrame, claimSize : V
 end
 
 function Module.ClearPlayerClaim( LocalPlayer : Player )
-	if PlayerClaimsCache[ LocalPlayer ] then
-		PlayerClaimsCache[ LocalPlayer ].Part:Destroy()
+	local hasClaimedArea = false
+	if PlayerClaimsCache[ LocalPlayer.UserId ] then
+		PlayerClaimsCache[ LocalPlayer.UserId ].Part:Destroy()
+		hasClaimedArea = true
 	end
-	PlayerClaimsCache[ LocalPlayer ] = nil
+	PlayerClaimsCache[ LocalPlayer.UserId ] = nil
+	return hasClaimedArea
 end
 
 function Module.CreatePlayerClaim( LocalPlayer : Player )
-
-	if PlayerClaimsCache[ LocalPlayer ] then
+	if Module.GetPlayerClaims( LocalPlayer ) then
 		return false, 'You already have a claim!'
 	end
 
@@ -49,18 +56,18 @@ function Module.CreatePlayerClaim( LocalPlayer : Player )
 	local CharacterPosition = Vector3.new(CharacterPivot.X, BASEPLATE_Y_LEVEL, CharacterPivot.Z)
 	CharacterPivot = CFrame.new( CharacterPosition, CharacterPosition + CharacterPivot.LookVector )
 
-	local success, err = Module.CanCreateClaimAtPosition( CharacterPivot, Vector3.one * 12 )
+	local success, err = Module.IsCFrameValidForClaim( CharacterPivot, Vector3.one * 12 )
 	if not success then
 		return false, err
 	end
 
 	-- create claim block and *return true*
 
-	return false, 'Claims are not currently enabled.'
+	return false, 'Claims are not currently enabled or implemented.'
 end
 
 function Module.Start()
-	Players.PlayerRemoving:Connect(Module.ClearPlayerClaim)
+
 end
 
 function Module.Init(otherSystems)

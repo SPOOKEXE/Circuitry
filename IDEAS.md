@@ -116,7 +116,8 @@
 ### Commands
 
 [USER]
-!claim									<< Claim the land near the user (if not intersecting spawn / other claims)
+!claim									<< Claim the area around the user (if not intersecting spawn / other claims)
+!claim-large							<< Claim a large area around the user (if not intersecting spawn / other claims)
 !unclaim								<< Unclaim the player's land if they have claimed any
 !clearobjects							<< Clear the player's placed down objects
 !hideothers								<< Hide the other players

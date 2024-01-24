@@ -1,4 +1,11 @@
 
+--[[
+
+	NEEDS TO BE ABSTRACTED AWAY FROM THE PLAYER
+	(use USER_ID and USERNAME instead of the Player instance)
+
+]]
+
 local RunService = game:GetService('RunService')
 local Players = game:GetService('Players')
 
@@ -56,47 +63,53 @@ end
 
 function Module.OnPlayerRemoving( LocalPlayer : Player )
 	Module.DisableAutoUpdateForPlayer( LocalPlayer )
-	LAST_TICK_PLAYERS[LocalPlayer] = nil
+	-- LAST_TICK_PLAYERS[LocalPlayer] = nil
 	CUSTOM_TICK_SUBSTEPS[LocalPlayer] = nil
 	CUSTOM_TICK_SPEED[LocalPlayer] = nil
 end
 
+function Module.CheckPlayerForAutoUpdate( LocalPlayer : Player )
+	if not table.find( AUTO_TICK_PLAYERS, LocalPlayer ) then
+		return
+	end
+
+	if LAST_TICK_PLAYERS[LocalPlayer] and time() < LAST_TICK_PLAYERS[LocalPlayer] then
+		return
+	end
+	LAST_TICK_PLAYERS[LocalPlayer] = time() + (1 / Module.GetPlayerTickSpeed( LocalPlayer ))
+
+	for _ = 1, Module.GetPlayerTickSubsteps( LocalPlayer ) do
+		local success, err = pcall(Module.StepPlayerTick, LocalPlayer )
+		if not success then
+			warn(err)
+			LAST_TICK_PLAYERS[LocalPlayer] = time() + 5
+			-- it errored so let the player know
+			break
+		end
+	end
+end
+
+function Module.StartGlobalTickUpdater()
+
+	task.spawn(function()
+		while true do
+			for _, LocalPlayer in ipairs( AUTO_TICK_PLAYERS ) do
+				Module.CheckPlayerForAutoUpdate( LocalPlayer )
+			end
+			RunService.Heartbeat:Wait()
+		end
+	end)
+
+end
+
 function Module.Start()
-	for _, LocalPlayer in ipairs( Players:GetPlayers() ) do
+	--[[for _, LocalPlayer in ipairs( Players:GetPlayers() ) do
 		task.spawn(Module.OnPlayerAdded, LocalPlayer)
 	end
 	Players.PlayerAdded:Connect(Module.OnPlayerAdded)
 	Players.PlayerRemoving:Connect(Module.DisableAutoUpdateForPlayer)
 
-	local function UpdatePlayer( LocalPlayer )
-		if not table.find( AUTO_TICK_PLAYERS, LocalPlayer ) then
-			return
-		end
-
-		if LAST_TICK_PLAYERS[LocalPlayer] and time() < LAST_TICK_PLAYERS[LocalPlayer] then
-			return
-		end
-		LAST_TICK_PLAYERS[LocalPlayer] = time() + (1 / Module.GetPlayerTickSpeed( LocalPlayer ))
-
-		for _ = 1, Module.GetPlayerTickSubsteps( LocalPlayer ) do
-			local success, err = pcall(Module.StepPlayerTick, LocalPlayer )
-			if not success then
-				warn(err)
-				LAST_TICK_PLAYERS[LocalPlayer] = time() + 5
-				-- it errored so let the player know
-				break
-			end
-		end
-	end
-
-	task.spawn(function()
-		while true do
-			for _, LocalPlayer in ipairs( AUTO_TICK_PLAYERS ) do
-				UpdatePlayer( LocalPlayer )
-			end
-			RunService.Heartbeat:Wait()
-		end
-	end)
+	]]
 end
 
 function Module.Init(otherSystems)
