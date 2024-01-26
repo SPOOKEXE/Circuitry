@@ -99,18 +99,21 @@
 - Laser Motion Detector (casts ray to a receiver infront, when player walks through it triggers)
 - Wireless Transmitter (channels, SEND/RECEIVE MODE, per-player; no sharing allowed)
 - Floppy Disk Drive + Floppys (computercraft)
+- Fast Clock / Timer
+- 2/4 Bit Adder
+- 2/4 Bit Counter/Demultiplexer/Multiplexer/Comparator
 
-- [TODO] Fast Clock / Timer
 - [TODO] 7-segment display
 - [TODO] 7-segment decoder
-- [TODO] 2/4/8 Bit Counter/Adder/Subtractor/Demultiplexer/Multiplexer/Comparator
+- [TODO] 2/4 Bit Subtractor
 - [TODO] Truth-Table-Integrated-Circuit (will assume 'default' integrated circuit otherwise if cannot resolve truth-table)
 ```
 
 ##### SPECIAL 2 - PAYWALL EXPENSIVE - 200 robux
 
 ```md
-- [TODO] 16/32/64 Bit Counter/Adder/Subtractor/Multiplier/Divider/Modulo/Power/Demux/Mux/Comparator
+- [TODO] 8/16 Bit Adder/Subtractor
+- [TODO] 8/16 Bit Counter/Multiplier/Divider/Modulo/Power/Demux/Mux/Comparator
 - [TODO] 32bitMemory (Base64 + bigNum library)
 - [TODO] 64bitMemory (Base64 + bigNum library)
 - [TODO] Instantaneous-Truth-Table-Integrated-Circuit (will assume 'default' integrated circuit otherwise if cannot resolve truth-table)
@@ -120,6 +123,7 @@
 ##### SPECIAL 3 - PAYWALL EXPENSIVE - 300 robux
 
 ```md
+- [TODO] 32/64 Bit Counter/Adder/Subtractor/Multiplier/Divider/Modulo/Power/Demux/Mux/Comparator
 - [TODO] 4/8/16/32/64 Bit ALU
 - [TODO] 32/64/128/256 Bit Memory (Base64 + bigNum library)
 - [TODO] 64x64/128x128 LED SCREEN
