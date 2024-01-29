@@ -32,15 +32,21 @@ function Module.HideWidgets( widgets : { string } )
 end
 
 function Module.Start()
-	for _, widget in pairs( WidgetCache ) do
+	print('Widgets Handler Started')
+	for name, widget in pairs( WidgetCache ) do
+		print('Starting widget: ', name)
 		widget.Start()
 	end
-	Module.ShowWidgets({'Components', 'Tools', 'Onscreen'})
+
+	Module.ShowWidgets({'Components'}) -- , 'Tools', 'Onscreen'
 end
 
 function Module.Init(otherSystems)
+	print('Widgets Handler Initialized')
 	SystemsContainer = otherSystems
-	for _, widget in pairs( WidgetCache ) do
+
+	for name, widget in pairs( WidgetCache ) do
+		print('Initializing widget: ', name)
 		widget.Init(otherSystems)
 	end
 end

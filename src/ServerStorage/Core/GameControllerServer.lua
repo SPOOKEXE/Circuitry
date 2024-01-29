@@ -34,12 +34,12 @@ function Module.DisallowPlayerCommands( LocalPlayer : Player )
 end
 
 function Module.OnPlayerAdded( LocalPlayer : Player )
-	SystemsContainer.CircuitServer.OnPlayerAdded( LocalPlayer )
+	-- SystemsContainer.CircuitServer.OnPlayerAdded( LocalPlayer )
 	SystemsContainer.CommandsServer.SetupPlayerCommandsHook( LocalPlayer )
 end
 
 function Module.OnPlayerRemoving( LocalPlayer : Player )
-	SystemsContainer.CircuitServer.OnPlayerRemoving( LocalPlayer )
+	-- SystemsContainer.CircuitServer.OnPlayerRemoving( LocalPlayer )
 end
 
 function Module.Start()

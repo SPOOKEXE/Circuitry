@@ -6,7 +6,7 @@
 			"$className" : "Players",
 			"$properties": {
 				"RespawnTime" : 0,
-				"CharacterAutoLoads": false
+				"CharacterAutoLoads": true
 			}
 		},
 		"ReplicatedFirst": {

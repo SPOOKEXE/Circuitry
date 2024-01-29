@@ -22,7 +22,7 @@ function Module.ShowWidget()
 	end
 	Module.IsOpen = true
 
-	--Interface.Visible = true
+	Interface.Tools.Visible = true
 end
 
 function Module.HideWidget()
@@ -32,11 +32,11 @@ function Module.HideWidget()
 	Module.IsOpen = false
 	Module.WidgetMaid:Cleanup()
 
-	--Interface.Visible = false
+	Interface.Tools.Visible = false
 end
 
 function Module.Start()
-	-- Interface.Visible = false
+	Interface.Tools.Visible = false
 end
 
 function Module.Init(otherSystems)

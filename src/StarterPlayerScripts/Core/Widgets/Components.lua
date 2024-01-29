@@ -1,13 +1,30 @@
 
+local RunService = game:GetService('RunService')
+
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
+local LocalAssets = LocalPlayer:WaitForChild('PlayerScripts'):WaitForChild('Assets')
+
+local LocalModules = require(LocalPlayer:WaitForChild("PlayerScripts"):WaitForChild("Modules"))
+local ViewportUtility = LocalModules.Utility.Viewport
 
 local Interface = LocalPlayer.PlayerGui:WaitForChild('Interface')
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ReplicatedModules = require(ReplicatedStorage:WaitForChild("Modules"))
 
+local CircuitComponentsModule = ReplicatedModules.Data.CircuitComponents
 local MaidClassModule = ReplicatedModules.Modules.Maid
+local UserInterfaceUtility = LocalModules.Utility.UserInterface
+
+local GLOBAL_ROTATION_SPEED : number = 5
+
+local function SetProperties( parent : Instance, properties : {[string] : any} ) : Instance
+	for propName, propValue in pairs( properties ) do
+		parent[propName] = propValue
+	end
+	return parent
+end
 
 local SystemsContainer = {}
 
@@ -15,6 +32,81 @@ local SystemsContainer = {}
 local Module = {}
 Module.IsOpen = false
 Module.WidgetMaid = MaidClassModule.New()
+Module.ViewportComponents = {}
+
+function Module.StartPlacingComponent( componentId : string )
+	print('Start Placement: ', componentId)
+end
+
+function Module.GetComponentFrame( componentId : string ) : Frame
+	local TargetFrame = Interface.Components.Scroll:FindFirstChild( componentId )
+	if TargetFrame then
+		return TargetFrame
+	end
+
+	local ComponentData = CircuitComponentsModule.GetComponentFromId( componentId )
+	if not ComponentData then
+		warn(string.format('Could not find component data for component of id: %s', componentId))
+		return nil
+	end
+
+	TargetFrame = LocalAssets.UI.TemplateSquare:Clone()
+	TargetFrame.Name = componentId
+
+	local ComponentButton : ImageButton = UserInterfaceUtility.CreateActionButton({Parent = TargetFrame})
+
+	Module.WidgetMaid:Give(ComponentButton.MouseEnter:Connect(function()
+		Interface.Components.ComponentLabel.Text = string.upper(componentId)
+	end))
+
+	Module.WidgetMaid:Give(ComponentButton.Activated:Connect(function()
+		Module.StartPlacingComponent( componentId )
+	end))
+
+	TargetFrame.LayoutOrder = ComponentData.LayoutOrder or 1
+	TargetFrame.Parent = Interface.Components.Scroll
+
+	if ComponentData.Icon then
+		TargetFrame.Viewport.Visible = false
+		TargetFrame.Icon.Visible = true
+		TargetFrame.Icon.ImageTransparency = 0
+		if typeof(ComponentData.Icon) == 'table' then
+			SetProperties( TargetFrame.Icon, ComponentData.Icon )
+		else
+			TargetFrame.Icon.Image = ComponentData.Icon
+		end
+		return TargetFrame
+	end
+
+	local ComponentModel : Model = ComponentData.Model and CircuitComponentsModule.FindModelFromName( ComponentData.Model )
+	if not ComponentModel then
+		warn(string.format('Could not find the component model for component of id: %s', componentId))
+		return TargetFrame
+	end
+
+	TargetFrame.Viewport.Visible = true
+	TargetFrame.Icon.Visible = false
+
+	local _, ModelSize = ComponentModel:GetBoundingBox()
+	local Range = math.max(ModelSize.X, ModelSize.Z)
+
+	local DEFAULT_VIEWPORT_CAMERA = CFrame.lookAt( Vector3.new(0, 1.5 + (Range * 0.75), 0), Vector3.zero )
+	ViewportUtility.ViewportCamera(TargetFrame.Viewport).CFrame = DEFAULT_VIEWPORT_CAMERA
+
+	local Model = ViewportUtility.SetupModelForViewport( ComponentModel:Clone() )
+	Model:PivotTo( CFrame.new() )
+	Model.Parent = TargetFrame.Viewport
+
+	Module.WidgetMaid:Give(Model)
+	table.insert(Module.ViewportComponents, Model)
+end
+
+function Module.UpdateWidget( dt : number )
+	local RotateCFrame = CFrame.Angles(0, math.rad(GLOBAL_ROTATION_SPEED) * dt, 0)
+	for _, Model in ipairs( Module.ViewportComponents ) do
+		Model:PivotTo( Model:GetPivot() * RotateCFrame )
+	end
+end
 
 function Module.ShowWidget()
 	if Module.IsOpen then
@@ -24,6 +116,18 @@ function Module.ShowWidget()
 
 	Interface.Components.Visible = true
 
+	-- generate all circuit component frames
+	for componentId, _ in pairs( CircuitComponentsModule.Components ) do
+		local Frame = Module.GetComponentFrame( componentId )
+		if not Frame then
+			continue
+		end
+
+	end
+
+	Module.WidgetMaid:Give(RunService.Heartbeat:Connect(function(dt : number)
+		Module.UpdateWidget(dt)
+	end))
 end
 
 function Module.HideWidget()
@@ -31,6 +135,7 @@ function Module.HideWidget()
 		return
 	end
 	Module.IsOpen = false
+	Module.ViewportComponents = {}
 	Module.WidgetMaid:Cleanup()
 	Interface.Components.Visible = false
 end
