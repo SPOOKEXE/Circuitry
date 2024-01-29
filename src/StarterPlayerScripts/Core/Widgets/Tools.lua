@@ -10,6 +10,7 @@ local ReplicatedModules = require(ReplicatedStorage:WaitForChild("Modules"))
 local MaidClassModule = ReplicatedModules.Modules.Maid
 
 local SystemsContainer = {}
+local WidgetsModule = {}
 
 -- // Module // --
 local Module = {}
@@ -39,8 +40,9 @@ function Module.Start()
 	Interface.Tools.Visible = false
 end
 
-function Module.Init(otherSystems)
+function Module.Init(otherSystems, widgetModule)
 	SystemsContainer = otherSystems
+	WidgetsModule = widgetModule
 end
 
 return Module

@@ -33,6 +33,12 @@ end
 -- // Module // --
 local Module = { }
 
+Module.RemoteEnums = {
+	Place = 1,
+	Delete = 2,
+	Rotate = 3,
+}
+
 Module.Components = {
 
 	-- // FREE COMPONENTS // --
@@ -64,7 +70,7 @@ Module.Components = {
 	Lever = 			CreateFreeComponentData({ Model = 'Lever' }),
 	PressurePlate = 	CreateFreeComponentData({ Model = 'PressurePlate' }),
 	Door = 				CreateFreeComponentData({ Model = 'Door' }),
-	DoubleDoor = 		CreateFreeComponentData({ Model = 'Door' }),
+	DoubleDoor = 		CreateFreeComponentData({ Model = 'DoubleDoor' }),
 
 	Bit8Memory = 		CreateFreeComponentData({ Model = 'Bit8Memory' }),
 	Bit8Graph = 		CreateFreeComponentData({ Model = 'Bit8Graph' }),

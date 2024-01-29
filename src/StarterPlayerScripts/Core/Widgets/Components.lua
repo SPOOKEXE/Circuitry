@@ -27,16 +27,13 @@ local function SetProperties( parent : Instance, properties : {[string] : any} )
 end
 
 local SystemsContainer = {}
+local WidgetsModule = {}
 
 -- // Module // --
 local Module = {}
 Module.IsOpen = false
 Module.WidgetMaid = MaidClassModule.New()
 Module.ViewportComponents = {}
-
-function Module.StartPlacingComponent( componentId : string )
-	print('Start Placement: ', componentId)
-end
 
 function Module.GetComponentFrame( componentId : string ) : Frame
 	local TargetFrame = Interface.Components.Scroll:FindFirstChild( componentId )
@@ -60,7 +57,7 @@ function Module.GetComponentFrame( componentId : string ) : Frame
 	end))
 
 	Module.WidgetMaid:Give(ComponentButton.Activated:Connect(function()
-		Module.StartPlacingComponent( componentId )
+		SystemsContainer.PlacementClient.StartPlacingComponent( componentId )
 	end))
 
 	TargetFrame.LayoutOrder = ComponentData.LayoutOrder or 1
@@ -144,8 +141,9 @@ function Module.Start()
 	Interface.Components.Visible = false
 end
 
-function Module.Init(otherSystems)
+function Module.Init(otherSystems, widgetsModule)
 	SystemsContainer = otherSystems
+	WidgetsModule = widgetsModule
 end
 
 return Module

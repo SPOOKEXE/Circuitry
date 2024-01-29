@@ -15,18 +15,28 @@ function Module.HideAllWidgets()
 	end
 end
 
-function Module.ShowWidgets( widgets : { string } )
+function Module.GetOpenWidgets() : { string }
+	local widgetNames = {}
 	for widgetName, widget in pairs( WidgetCache ) do
-		if table.find(widgets, widgetName) then
-			widget.ShowWidget()
+		if widget.IsOpen then
+			table.insert( widgetNames, widgetName )
 		end
 	end
+	return widgetNames
 end
 
 function Module.HideWidgets( widgets : { string } )
 	for widgetName, widget in pairs( WidgetCache ) do
 		if table.find(widgets, widgetName) then
 			widget.HideWidget()
+		end
+	end
+end
+
+function Module.ShowWidgets( widgets : { string } )
+	for widgetName, widget in pairs( WidgetCache ) do
+		if table.find(widgets, widgetName) then
+			widget.ShowWidget()
 		end
 	end
 end
@@ -47,7 +57,7 @@ function Module.Init(otherSystems)
 
 	for name, widget in pairs( WidgetCache ) do
 		print('Initializing widget: ', name)
-		widget.Init(otherSystems)
+		widget.Init(otherSystems, Module)
 	end
 end
 
