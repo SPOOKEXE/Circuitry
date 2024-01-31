@@ -7,6 +7,7 @@ local LocalAssets = LocalPlayer:WaitForChild('PlayerScripts'):WaitForChild('Asse
 
 local LocalModules = require(LocalPlayer:WaitForChild("PlayerScripts"):WaitForChild("Modules"))
 local ViewportUtility = LocalModules.Utility.Viewport
+local UserInterfaceUtility = LocalModules.Utility.UserInterface
 
 local Interface = LocalPlayer.PlayerGui:WaitForChild('Interface')
 
@@ -15,7 +16,6 @@ local ReplicatedModules = require(ReplicatedStorage:WaitForChild("Modules"))
 
 local CircuitComponentsModule = ReplicatedModules.Data.CircuitComponents
 local MaidClassModule = ReplicatedModules.Modules.Maid
-local UserInterfaceUtility = LocalModules.Utility.UserInterface
 
 local GLOBAL_ROTATION_SPEED : number = 5
 

@@ -9,6 +9,8 @@ end
 -- // Module // --
 local Module = {}
 
+Module.Widgets = WidgetCache
+
 function Module.HideAllWidgets()
 	for _, widget in pairs( WidgetCache ) do
 		widget.HideWidget()
@@ -48,7 +50,7 @@ function Module.Start()
 		widget.Start()
 	end
 
-	Module.ShowWidgets({'Components'}) -- , 'Tools', 'Onscreen'
+	Module.ShowWidgets({'Components', 'Tools'}) -- , 'Onscreen'
 end
 
 function Module.Init(otherSystems)

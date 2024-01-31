@@ -91,6 +91,9 @@ function Module.StopPlacement()
 end
 
 function Module.StartPlacingComponent( componentId : string )
+
+	SystemsContainer.Widgets.Widgets.Tools.DisableAllTools()
+
 	if IsPlacementEnabled then
 		Module.StopPlacement()
 	end
@@ -125,18 +128,12 @@ function Module.PlaceObject()
 	local TargetRotation = CurrentRotation
 	print('Place:', TargetComponentId, TargetPosition, TargetRotation)
 
-	PlacementBridge:FireServer( TargetComponentId, TargetPosition, TargetRotation )
-	--[[
-		local ComponentData : {}? = CircuitComponentsModule.GetComponentFromId( TargetComponentId )
-		local ComponentModel : Instance? = ComponentData and CircuitComponentsModule.FindModelFromName( ComponentData.Model )
-
-		print( TargetPosition, TargetRotation )
-		local Pivot = CFrame.new( TargetPosition ) * CFrame.Angles(0, math.rad(TargetRotation * 90), 0)
-
-		local Model = ComponentModel:Clone()
-		Model:PivotTo( Pivot )
-		Model.Parent = PlacementsFolder
-	]]
+	local success, err = PlacementBridge:InvokeServer(
+		TargetComponentId,
+		TargetPosition,
+		TargetRotation
+	)
+	print( success, err )
 end
 
 function Module.Start()

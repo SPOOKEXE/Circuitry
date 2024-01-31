@@ -2,11 +2,7 @@
 local ReplicatedStorage = game:GetService('ReplicatedStorage')
 local ReplicatedAssets = ReplicatedStorage:WaitForChild('Assets')
 
-local GamepassIds ={
-	Cheapest = 0,
-	Moderate = 1,
-	Expensive = 2,
-}
+local GamepassIds ={ Cheapest = 0, Moderate = 1, Expensive = 2, }
 
 local function SetProperties( Parent, properties )
 	if typeof(properties) == 'table' then
