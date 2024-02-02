@@ -10,13 +10,8 @@ function Module.ClampToGrid( position : Vector3, grid : number, lockY : boolean 
 end
 
 function Module.GetModelBoundingBoxData( Model : Model | BasePart ) : (CFrame, Vector3)
-	local HitboxPart : BasePart? = Model:FindFirstChild('Hitbox')
-	if HitboxPart then
-		return HitboxPart.CFrame, HitboxPart.Size
-	end
 	if Model:IsA('Model') then
-		local CFram, Size = Model:GetBoundingBox()
-		return CFram, Size
+		return Model:GetBoundingBox()
 	end
 	return Model.CFrame, Model.Size
 end

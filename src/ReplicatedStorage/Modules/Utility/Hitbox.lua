@@ -1,15 +1,17 @@
+
+local infYCFrame = CFrame.new(0, 9e10, 0)
+
 local hitboxBlock = Instance.new('Part')
 hitboxBlock.Name = ''
 hitboxBlock.Color = Color3.new(1, 0, 0)
 hitboxBlock.Transparency = 0.5
+hitboxBlock.CFrame = infYCFrame
 hitboxBlock.CanCollide = false
 hitboxBlock.CanTouch = true
 hitboxBlock.CanQuery = true
 hitboxBlock.Anchored = true
 hitboxBlock.CastShadow = false
 hitboxBlock.Parent = workspace:WaitForChild('Terrain')
-
-local infYCFrame = CFrame.new(0, 9e10, 0)
 
 -- // Module // --
 local Module = {}

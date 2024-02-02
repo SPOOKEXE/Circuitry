@@ -7,6 +7,9 @@ local Players = game:GetService('Players')
 local LocalPlayer = Players.LocalPlayer
 local LocalMouse = LocalPlayer:GetMouse()
 
+local LocalModules = require(LocalPlayer:WaitForChild("PlayerScripts"):WaitForChild("Modules"))
+local RaycasterModule = LocalModules.Modules.Raycaster
+
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ReplicatedModules = require(ReplicatedStorage:WaitForChild("Modules"))
 
@@ -40,16 +43,6 @@ PlacementModelHighlight.OutlineColor = Color3.new(1, 1, 1)
 PlacementModelHighlight.FillTransparency = 1
 
 local PlacementsFolder = workspace:WaitForChild('Placements')
-
-local function GetMouseHit( distance : number? )
-	distance = distance or 50
-	local ray = CurrentCamera:ScreenPointToRay( LocalMouse.X, LocalMouse.Y )
-	local RayResult = workspace:Raycast( ray.Origin, ray.Direction * distance, rayParams )
-	if RayResult then
-		return CFrame.lookAt(RayResult.Position, RayResult.Position + ray.Direction.Unit)
-	end
-	return CFrame.lookAt( ray.Origin, ray.Origin + ray.Direction ) + (ray.Direction.Unit * distance)
-end
 
 local function SetupModelForPlacement( Model )
 	Model = Model:Clone()
@@ -175,7 +168,7 @@ function Module.Start()
 		if CurrentModel and IsPlacementEnabled then
 			local BoxCFrame, BoxSize = PlacementUtility.GetModelBoundingBoxData( CurrentModel )
 			-- find position
-			local MouseHit : CFrame = GetMouseHit( 50 )
+			local MouseHit : CFrame = RaycasterModule.GetMouseHit( 50 )
 			local GridSnapped = PlacementUtility.ClampToGrid( MouseHit.Position, 1, false )
 			CurrentPosition = GridSnapped
 			local Pivot = CFrame.new( GridSnapped ) * CFrame.Angles(0, math.rad(CurrentRotation * 90), 0)

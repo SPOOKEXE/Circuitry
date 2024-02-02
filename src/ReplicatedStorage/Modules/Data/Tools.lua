@@ -87,9 +87,15 @@ Module.Tools = {
 		Gamepass = false,
 	}),
 
-	Statistics = CreateFreeToolData({
+	Layers = CreateFreeToolData({
 		Icon = 'rbxassetid://-1',
 		LayoutOrder = 10,
+		Gamepass = false,
+	}),
+
+	Statistics = CreateFreeToolData({
+		Icon = 'rbxassetid://-1',
+		LayoutOrder = 11,
 		Gamepass = false,
 	}),
 
