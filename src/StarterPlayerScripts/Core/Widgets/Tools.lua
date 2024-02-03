@@ -18,6 +18,9 @@ local ReplicatedModules = require(ReplicatedStorage:WaitForChild("Modules"))
 local ToolConfigModule = ReplicatedModules.Data.Tools
 local MaidClassModule = ReplicatedModules.Modules.Maid
 
+local RNetModule = ReplicatedModules.Libraries.RNet
+local ToolsBridge = RNetModule.Create('PlacementTools')
+
 local SystemsContainer = {}
 local WidgetsModule = {}
 
@@ -151,9 +154,6 @@ end
 function Module.DisableAllTools()
 	Module.CurrentTool = false
 	Module.ToolMaid:Cleanup()
-
-
-	ContextActionService:UnbindAction('escapeExit')
 end
 
 function Module.EnableSelectTool()
@@ -171,18 +171,20 @@ function Module.EnableSelectTool()
 		Module.SelectionBlacklist = {}
 	end
 
-	local function RemoveSelections( selections : { Model } )
-		for _, object in ipairs( selections ) do
-			local index = table.find( Selected, object )
-			if index then
-				table.remove(Selected, index)
-				local box = table.remove(Boxes, index)
-				if box then
-					box:Destroy()
+	--[[
+		local function RemoveSelections( selections : { Model } )
+			for _, object in ipairs( selections ) do
+				local index = table.find( Selected, object )
+				if index then
+					table.remove(Selected, index)
+					local box = table.remove(Boxes, index)
+					if box then
+						box:Destroy()
+					end
 				end
 			end
 		end
-	end
+	]]
 
 	local BaseSelectionBox = Instance.new('SelectionBox')
 	BaseSelectionBox.Name = 'SelectedBox'
@@ -214,6 +216,28 @@ function Module.EnableSelectTool()
 
 	Maid:Give(ResetSelections, function()
 		Module.SelectionBlacklist = nil
+	end)
+
+	local function CopySelectionNames()
+		local newSelections = {}
+		for _, basePart in ipairs( Selected ) do
+			table.insert(newSelections, basePart.Name)
+		end
+		return newSelections
+	end
+
+	ContextActionService:BindAction('deleteBind', function(actionName, inputState, _)
+		if actionName == 'deleteBind' and inputState == Enum.UserInputState.Begin then
+			if #Selected > 0 then
+				local Selections = CopySelectionNames()
+				ToolsBridge:FireServer( ToolConfigModule.RemoteEnums.Delete, Selections )
+				ResetSelections()
+			end
+		end
+	end, false, Enum.KeyCode.Delete)
+
+	Maid:Give(function()
+		ContextActionService:UnbindAction('deleteBind')
 	end)
 
 	Module.ToolMaid:Give( Maid )

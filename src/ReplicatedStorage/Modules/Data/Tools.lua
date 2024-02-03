@@ -29,7 +29,7 @@ end
 local Module = { }
 
 Module.RemoteEnums = {
-
+	Delete = 1,
 }
 
 Module.Tools = {

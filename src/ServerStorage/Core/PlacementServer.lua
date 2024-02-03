@@ -6,8 +6,10 @@ local ReplicatedModules = require(ReplicatedStorage:WaitForChild("Modules"))
 
 local RNetModule = ReplicatedModules.Libraries.RNet
 local PlacementBridge = RNetModule.Create('PlacementSystem')
+local ToolsBridge = RNetModule.Create('PlacementTools')
 
 local CircuitComponentsModule = ReplicatedModules.Data.CircuitComponents
+local ToolsConfigModule = ReplicatedModules.Data.Tools
 local PlacementUtility = ReplicatedModules.Utility.Placement
 
 local PlacementsFolder = workspace:WaitForChild('Placements')
@@ -57,6 +59,7 @@ function Module.PlaceComponentAtPosition( LocalPlayer, componentId : string, pos
 	local Clone = ComponentModel:Clone()
 	Clone.Name = componentUUID
 	Clone:SetAttribute('ComponentId', componentId)
+	Clone:SetAttribute('OwnerId', LocalPlayer.UserId)
 	Clone:PivotTo( Pivot )
 	Clone.Parent = PlacementsFolder
 
@@ -65,18 +68,38 @@ function Module.PlaceComponentAtPosition( LocalPlayer, componentId : string, pos
 	return true, 'Component has been placed.'
 end
 
-function Module.DeleteComponent( LocalPlayer, targetUUID : string )
+function Module.DeleteComponent( LocalPlayer : Player, targetUUID : string )
 	if typeof(targetUUID) ~= 'string' then
 		return false, 'Target component is not a string.'
 	end
 
-	--local Object = PlacementsFolder:FindFirstChild( targetUUID )
-	--if Object then
-	--	Object:Destroy()
-	--end
-	--SystemsContainer.CircuitServer.DeleteComponent( LocalPlayer, targetUUID )
+	local Object = PlacementsFolder:FindFirstChild( targetUUID )
+	print( targetUUID, Object and Object:GetFullName() or 'Does not exist.' )
+	if Object then
+		Object:Destroy()
+	end
+	-- SystemsContainer.CircuitServer.DeleteComponent( LocalPlayer, targetUUID )
 
 	return true, 'Component has been deleted.'
+end
+
+function Module.ParseToolCommand( LocalPlayer : Player, ... : any )
+
+	print( LocalPlayer.Name, ... )
+
+	local Args = {...}
+	local Job = table.remove(Args, 1)
+
+	if Job == ToolsConfigModule.RemoteEnums.Delete then
+		local Arg0 = table.remove(Args, 1)
+		if typeof(Arg0) ~= 'table' or #Arg0 == 0 then
+			return
+		end
+		for _, componentId in ipairs( Arg0 ) do
+			task.defer( Module.DeleteComponent, LocalPlayer, componentId )
+		end
+	end
+
 end
 
 function Module.Start()
@@ -84,6 +107,7 @@ function Module.Start()
 	overlapParams.FilterDescendantsInstances = { PlacementsFolder }
 
 	PlacementBridge:OnServerInvoke(Module.PlaceComponentAtPosition)
+	ToolsBridge:OnServerEvent(Module.ParseToolCommand)
 
 end
 
