@@ -93,7 +93,7 @@ function Module.SetupSelectorClickAndDraggingBox( callback : ( boolean, { {any} 
 
 	local function OnButton1Up()
 		if not IsDragging then
-			local Model, _, _ = RaycasterModule.RaycastComponentAtMouse(nil)
+			local Model, _ = RaycasterModule.RaycastComponentAtMouse(nil)
 			callback(true, { Model })
 		end
 		Frame.Visible = false
@@ -134,9 +134,9 @@ function Module.SetupSelectorLeftClick( callback : ( Model?, Vector3?, Vector3? 
 
 	ContextActionService:BindAction('keybinds112', function(actionName, inputState, _)
 		if actionName == 'keybinds112' and inputState == Enum.UserInputState.Begin then
-			local Model, Position, Normal = RaycasterModule.RaycastComponentAtMouse( nil )
+			local Model, Position = RaycasterModule.RaycastComponentAtMouse( nil )
 			if Model then
-				task.spawn(callback, Model, Position, Normal)
+				task.spawn(callback, Model, Position)
 			end
 			return Enum.ContextActionResult.Sink
 		end
@@ -245,10 +245,17 @@ end
 
 function Module.EnableTransformTool()
 	warn('Not Implemented - Transform Tool')
+end
+
+function Module.EnableWireTool()
+	warn('Not Implemented - Wire Tool')
 
 	local TargetModel = nil
 
+	local ActiveWires = {}
+
 	local function StartWireDragging()
+
 		while TargetModel and UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) do
 
 			local OriginPivot = TargetModel:GetPivot()
@@ -283,10 +290,6 @@ function Module.EnableTransformTool()
 
 	Module.ToolMaid:Give( Maid )
 
-end
-
-function Module.EnableWireTool()
-	warn('Not Implemented - Wire Tool')
 end
 
 function Module.EnablePulseTool()

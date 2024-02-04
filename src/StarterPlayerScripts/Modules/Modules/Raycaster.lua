@@ -10,13 +10,9 @@ local PlacementUtility = ReplicatedModules.Utility.Placement
 local CurrentCamera = workspace.CurrentCamera
 local PlacementsFolder = workspace:WaitForChild('Placements')
 
-local componentsRayParams = RaycastParams.new()
-componentsRayParams.FilterType = Enum.RaycastFilterType.Include
-componentsRayParams.FilterDescendantsInstances = { PlacementsFolder }
-
-local anyRayParams = RaycastParams.new()
-anyRayParams.FilterType = Enum.RaycastFilterType.Include
-anyRayParams.FilterDescendantsInstances = { PlacementsFolder, workspace:WaitForChild('BetterBasePlates') }
+local rayParams = RaycastParams.new()
+rayParams.FilterType = Enum.RaycastFilterType.Include
+rayParams.FilterDescendantsInstances = { PlacementsFolder }
 
 local function AngleBetween(vectorA : Vector3, vectorB : Vector3 )
 	return math.acos(math.clamp(vectorA:Dot(vectorB), -1, 1))
@@ -32,7 +28,8 @@ local Module = {}
 function Module.GetMouseHit( distance : number? )
 	distance = distance or 50
 	local ray = CurrentCamera:ScreenPointToRay( LocalMouse.X, LocalMouse.Y )
-	local RayResult = workspace:Raycast( ray.Origin, ray.Direction * distance, anyRayParams )
+	rayParams.FilterDescendantsInstances = { PlacementsFolder, workspace.BetterBasePlates }
+	local RayResult = workspace:Raycast( ray.Origin, ray.Direction * distance, rayParams )
 	if RayResult then
 		return CFrame.lookAt(RayResult.Position, RayResult.Position + ray.Direction.Unit)
 	end
@@ -47,12 +44,31 @@ function Module.GetComponentModelFromPart( basePart : BasePart | Model ) : Model
 	return Model
 end
 
-function Module.RaycastComponentAtMouse( distance : number? ) : ( Model?, Vector3?, Vector3? )
+function Module.RaycastPlaceablePartAtMouse( distance : number? ) : ( Instance?, Vector3? )
 	local ray = CurrentCamera:ScreenPointToRay( LocalMouse.X, LocalMouse.Y )
-	local rayResult = workspace:Raycast( ray.Origin, ray.Direction * (distance or 100) )
+	rayParams.FilterDescendantsInstances = { PlacementsFolder }
+	local rayResult = workspace:Raycast( ray.Origin, ray.Direction * (distance or 100), rayParams )
+	if rayResult and rayResult.Instance:IsDescendantOf( PlacementsFolder ) then
+		return rayResult.Instance, rayResult.Position
+	end
+	return nil, nil
+end
+
+function Module.RaycastComponentAtMouse( distance : number? ) : ( Model?, Vector3? )
+	local BasePart, Position = Module.RaycastPlaceablePartAtMouse( distance )
+	if BasePart then
+		return Module.GetComponentModelFromPart( BasePart ), Position
+	end
+	return nil, nil
+end
+
+function Module.RaycastBasePartAtMouse( objects : { BasePart }, distance : number? ) : ( BasePart?, Model?, Vector3? )
+	local ray = CurrentCamera:ScreenPointToRay( LocalMouse.X, LocalMouse.Y )
+	rayParams.FilterDescendantsInstances = objects
+	local rayResult = workspace:Raycast( ray.Origin, ray.Direction * (distance or 100), rayParams )
 	if rayResult and rayResult.Instance:IsDescendantOf( PlacementsFolder ) then
 		local Model = Module.GetComponentModelFromPart( rayResult.Instance )
-		return Model, rayResult.Position, rayResult.Normal
+		return rayResult.Instance, Model, rayResult.Position
 	end
 	return nil, nil, nil
 end
@@ -64,20 +80,18 @@ function Module.IsObjectInCameraFOV( objectPivot : CFrame, cameraCFrame : CFrame
 	return math.abs(angle) <= (CurrentCamera.FieldOfView / 2)
 end
 
-function Module.GetComponentsInScreenBox( point0 : Vector2, point1 : Vector2, ignoreList : { Model }? ) : { Model }
+function Module.GetBasePartsInScreenBox( objects : { BasePart }, point0 : Vector2, point1 : Vector2, ignoreList : { Instance }? ) : { Instance }
 	local topLeft = Vector2.new( math.min( point0.X, point1.X ), math.min( point0.Y, point1.Y ) )
 	local bottomRight = Vector2.new( math.max( point0.X, point1.X ), math.max( point0.Y, point1.Y ) )
 
 	local CameraCFrame = CurrentCamera.CFrame
-	local Components = {}
-	for _, Model in ipairs( PlacementsFolder:GetChildren() ) do
-		if ignoreList and table.find(ignoreList, Model) then
+	local BaseParts = {}
+	for _, Parts in ipairs( objects ) do
+		if ignoreList and table.find(ignoreList, Parts) then
 			continue
 		end
 
-		-- local PlacementPivot = Model:GetPivot()
-		local BoundsCFrame, _ = PlacementUtility.GetModelBoundingBoxData( Model )
-
+		local BoundsCFrame, _ = PlacementUtility.GetModelBoundingBoxData( Parts )
 		local InFOV = Module.IsObjectInCameraFOV( BoundsCFrame, CameraCFrame )
 		if not InFOV then
 			continue
@@ -87,9 +101,13 @@ function Module.GetComponentsInScreenBox( point0 : Vector2, point1 : Vector2, ig
 		if not IsPointInRect( ScreenXY, topLeft, bottomRight ) then
 			continue
 		end
-		table.insert(Components, Model)
+		table.insert(BaseParts, Parts)
 	end
-	return Components
+	return BaseParts
+end
+
+function Module.GetComponentsInScreenBox( point0 : Vector2, point1 : Vector2, ignoreList : { Model }? ) : { Model }
+	return Module.GetBasePartsInScreenBox( PlacementsFolder:GetChildren(), point0, point1, ignoreList )
 end
 
 return Module
