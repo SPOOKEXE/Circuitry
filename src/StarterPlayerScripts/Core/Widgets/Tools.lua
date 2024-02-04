@@ -45,7 +45,7 @@ Module.WidgetMaid = MaidClassModule.New()
 Module.CurrentTool = false
 Module.ToolMaid = MaidClassModule.New()
 
-Module.SelectionBlacklist = nil
+Module.SelectedComponents = {}
 
 function Module.SetupSelectorClickAndDraggingBox( callback : ( boolean, { {any} } ) -> nil ) : { Cleanup : () -> nil }
 
@@ -75,7 +75,7 @@ function Module.SetupSelectorClickAndDraggingBox( callback : ( boolean, { {any} 
 		if (OriginXY - NewXY).Magnitude < 2 then
 			return -- only if a larger change occurs
 		end
-		local Components = RaycasterModule.GetComponentsInScreenBox( OriginXY, NewXY, Module.SelectionBlacklist )
+		local Components = RaycasterModule.GetComponentsInScreenBox( OriginXY, NewXY, Module.SelectedComponents )
 		task.spawn( callback, false, Components )
 	end
 
@@ -158,17 +158,17 @@ end
 
 function Module.EnableSelectTool()
 	local Boxes = {}
-	local Selected = {}
 
-	Module.SelectionBlacklist = Selected
-
-	local function ResetSelections()
-		Selected = {}
+	local function DestroyBoxes()
 		for _, box in ipairs( Boxes ) do
 			box:Destroy()
 		end
 		Boxes = {}
-		Module.SelectionBlacklist = {}
+	end
+
+	local function ResetSelections()
+		Module.SelectedComponents = {}
+		DestroyBoxes()
 	end
 
 	--[[
@@ -196,31 +196,31 @@ function Module.EnableSelectTool()
 
 	local function AppendSelections( selections : { Model } )
 		for _, object in ipairs( selections ) do
-			local index = table.find( Selected, object )
+			local index = table.find( Module.SelectedComponents, object )
 			if index then
 				continue
 			end
 			local selectionBox = BaseSelectionBox:Clone()
 			selectionBox.Adornee = object
 			selectionBox.Parent = object
-			table.insert( Selected, object )
+			table.insert( Module.SelectedComponents, object )
 			table.insert( Boxes, selectionBox )
 		end
 	end
 
 	local Maid = Module.SetupSelectorClickAndDraggingBox(function( clicked : boolean, models : {Model} )
 		print( clicked and 'Clicked on' or 'Dragging Box', #models )
-		ResetSelections( )
+		if not UserInputService:IsKeyDown( Enum.KeyCode.LeftControl ) then -- TODO: force multi-select
+			ResetSelections()
+		end
 		AppendSelections( models )
 	end)
 
-	Maid:Give(ResetSelections, function()
-		Module.SelectionBlacklist = nil
-	end)
+	Maid:Give(ResetSelections, DestroyBoxes)
 
 	local function CopySelectionNames()
 		local newSelections = {}
-		for _, basePart in ipairs( Selected ) do
+		for _, basePart in ipairs( Module.SelectedComponents ) do
 			table.insert(newSelections, basePart.Name)
 		end
 		return newSelections
@@ -228,7 +228,7 @@ function Module.EnableSelectTool()
 
 	ContextActionService:BindAction('deleteBind', function(actionName, inputState, _)
 		if actionName == 'deleteBind' and inputState == Enum.UserInputState.Begin then
-			if #Selected > 0 then
+			if #Module.SelectedComponents > 0 then
 				local Selections = CopySelectionNames()
 				ToolsBridge:FireServer( ToolConfigModule.RemoteEnums.Delete, Selections )
 				ResetSelections()
@@ -244,43 +244,94 @@ function Module.EnableSelectTool()
 end
 
 function Module.EnableTransformTool()
+	warn('Not Implemented - Transform Tool')
+
+	local TargetModel = nil
+
+	local function StartWireDragging()
+		while TargetModel and UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) do
+
+			local OriginPivot = TargetModel:GetPivot()
+			local TargetComponent = RaycasterModule.RaycastComponentAtMouse( 100 )
+
+			local MousePivot = nil
+			if TargetComponent then
+				-- connect to the component
+				MousePivot = TargetComponent:GetPivot()
+			else
+				MousePivot = RaycasterModule.GetMouseHit( 100 )
+			end
+
+			-- move connection part
+			-- TODO: parallel connect for all selected
+
+			task.wait()
+		end
+		TargetModel = nil
+	end
+
+	local Maid = Module.SetupSelectorLeftClick(function( Model, _, _ )
+		if not Model:IsDescendantOf( PlacementsFolder ) then
+			return
+		end
+		if TargetModel == Model then
+			StartWireDragging()
+		else
+			TargetModel = Model
+		end
+	end)
+
+	Module.ToolMaid:Give( Maid )
 
 end
 
 function Module.EnableWireTool()
-
+	warn('Not Implemented - Wire Tool')
 end
 
 function Module.EnablePulseTool()
-
+	warn('Not Implemented - Pulse Tool')
 end
 
 function Module.EnableDeleteTool()
 
+	local Maid = Module.SetupSelectorLeftClick(function( Model, _, _ )
+		if Model:IsDescendantOf( PlacementsFolder ) then
+			ToolsBridge:FireServer( ToolConfigModule.RemoteEnums.Delete, {Model.Name} )
+		end
+	end)
+
+	Module.ToolMaid:Give( Maid )
+
 end
 
 function Module.EnableSavesTool()
-
+	warn('Not Implemented - Saves Tool')
 end
 
 function Module.EnableRegisterTool()
-
+	warn('Not Implemented - Register Tool')
 end
 
 function Module.EnableStamperTool()
-
+	warn('Not Implemented - Stamper Tool')
 end
 
 function Module.EnableInspectTool()
-
+	warn('Not Implemented - Inspect Tool')
 end
 
 function Module.EnableLayersTool()
-
+	warn('Not Implemented - Layers Tool')
 end
 
 function Module.EnableStatisticsTool()
+	warn('Not Implemented - Statistics Tool')
+end
 
+function Module.EnableBusTool()
+	-- option to select bits in the bus
+	warn('Not Implemented - Bus Tool')
 end
 
 --[[
@@ -334,6 +385,8 @@ function Module.EnableToolById( toolId : string )
 		Module.EnableLayersTool()
 	elseif toolId == 'Statistics' then
 		Module.EnableStatisticsTool()
+	elseif toolId == 'Bus' then
+		Module.EnableBusTool()
 	else
 		warn('Unsupported Tool Id: ' .. tostring(toolId))
 	end

@@ -29,7 +29,6 @@ local CurrentPosition = Vector3.zero
 local IsPlacementEnabled = false
 local IsCollisionDetected = false
 local CurrentModel = nil
-local CurrentId = nil
 
 local rayParams = RaycastParams.new()
 rayParams.FilterType = Enum.RaycastFilterType.Include
@@ -68,6 +67,8 @@ end
 -- // Module // --
 local Module = {}
 
+Module.CurrentId = nil
+
 function Module.IsCurrentlyPlacing()
 	return IsPlacementEnabled
 end
@@ -75,12 +76,14 @@ end
 function Module.StopPlacement()
 	print('Stop Placement')
 	IsPlacementEnabled = false
-	CurrentId = nil
+	Module.CurrentId = nil
 	if CurrentModel then
 		CurrentModel:Destroy()
 	end
 	CurrentModel = nil
 	PlacementModelHighlight.Adornee = nil
+
+	SystemsContainer.Widgets.Widgets.Components.UpdateFrames()
 end
 
 function Module.StartPlacingComponent( componentId : string )
@@ -99,12 +102,14 @@ function Module.StartPlacingComponent( componentId : string )
 	end
 
 	print('Start Placing: ', componentId)
-	CurrentId = componentId
+	Module.CurrentId = componentId
 	CurrentRotation = 1
 	IsPlacementEnabled = true
 
 	CurrentModel = SetupModelForPlacement( ComponentModel )
 	CurrentModel.Parent = workspace
+
+	SystemsContainer.Widgets.Widgets.Components.UpdateFrames()
 end
 
 function Module.RotateCurrent()
@@ -116,7 +121,7 @@ function Module.RotateCurrent()
 end
 
 function Module.PlaceObject()
-	local TargetComponentId = CurrentId
+	local TargetComponentId = Module.CurrentId
 	local TargetPosition = CurrentPosition
 	local TargetRotation = CurrentRotation
 	print('Place:', TargetComponentId, TargetPosition, TargetRotation)

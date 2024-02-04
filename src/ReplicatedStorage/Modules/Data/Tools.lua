@@ -2,7 +2,7 @@
 local ReplicatedStorage = game:GetService('ReplicatedStorage')
 local ReplicatedAssets = ReplicatedStorage:WaitForChild('Assets')
 
-local GamepassIds ={ Cheapest = 0, Moderate = 1, Expensive = 2, }
+local MarketModule = require(script.Parent.Market)
 
 local function SetProperties( Parent, properties )
 	if typeof(properties) == 'table' then
@@ -17,7 +17,7 @@ local function CreateImageData( image : string, color : Color3?, size : UDim2? )
 	return { Image = image, ImageColor3 = color, Size = size }
 end
 
-local function CreateFreeToolData( properties :{} ) : { }
+local function CreateToolData( properties :{} ) : { }
 	return SetProperties({
 		LayoutOrder = 99,
 		Icon = false,
@@ -25,91 +25,98 @@ local function CreateFreeToolData( properties :{} ) : { }
 	}, properties)
 end
 
+local QUESTION_MARK_IMAGE = CreateImageData('rbxassetid://15668939723')
+
 -- // Module // --
 local Module = { }
 
-Module.RemoteEnums = {
-	Delete = 1,
-}
+Module.RemoteEnums = { Delete = 1, }
+Module.AllowedBusBits = { 2, 4, 8, 12, 16, 24, 32, 48, 64 }
 
 Module.Tools = {
-	Select = CreateFreeToolData({
-		Icon = 'rbxassetid://-1',
+	Select = CreateToolData({
+		Icon = QUESTION_MARK_IMAGE,
 		LayoutOrder = 1,
 		Gamepass = false,
 	}),
 
-	Transform = CreateFreeToolData({
-		Icon = 'rbxassetid://-1',
+	Transform = CreateToolData({
+		Icon = QUESTION_MARK_IMAGE,
 		LayoutOrder = 2,
 		Gamepass = false,
 	}),
 
-	Wire = CreateFreeToolData({
-		Icon = 'rbxassetid://-1',
+	Wire = CreateToolData({
+		Icon = QUESTION_MARK_IMAGE,
 		LayoutOrder = 3,
 		Gamepass = false,
 	}),
 
-	Pulse = CreateFreeToolData({
-		Icon = 'rbxassetid://-1',
+	Pulse = CreateToolData({
+		Icon = QUESTION_MARK_IMAGE,
 		LayoutOrder = 4,
 		Gamepass = false,
 	}),
 
-	Delete = CreateFreeToolData({
-		Icon = 'rbxassetid://-1',
+	Delete = CreateToolData({
+		Icon = QUESTION_MARK_IMAGE,
 		LayoutOrder = 5,
 		Gamepass = false,
 	}),
 
-	Saves = CreateFreeToolData({
-		Icon = 'rbxassetid://-1',
+	Saves = CreateToolData({
+		Icon = QUESTION_MARK_IMAGE,
 		LayoutOrder = 6,
 		Gamepass = false,
 	}),
 
-	Register = CreateFreeToolData({
-		Icon = 'rbxassetid://-1',
+	Register = CreateToolData({
+		Icon = QUESTION_MARK_IMAGE,
 		LayoutOrder = 7,
 		Gamepass = false,
 	}),
 
-	Stamper = CreateFreeToolData({
-		Icon = 'rbxassetid://-1',
+	Stamper = CreateToolData({
+		Icon = QUESTION_MARK_IMAGE,
 		LayoutOrder = 8,
 		Gamepass = false,
 	}),
 
-	Inspect = CreateFreeToolData({
-		Icon = 'rbxassetid://-1',
+	Inspect = CreateToolData({
+		Icon = QUESTION_MARK_IMAGE,
 		LayoutOrder = 9,
 		Gamepass = false,
 	}),
 
-	Layers = CreateFreeToolData({
-		Icon = 'rbxassetid://-1',
+	Layers = CreateToolData({
+		Icon = QUESTION_MARK_IMAGE,
 		LayoutOrder = 10,
 		Gamepass = false,
 	}),
 
-	Statistics = CreateFreeToolData({
-		Icon = 'rbxassetid://-1',
+	Statistics = CreateToolData({
+		Icon = QUESTION_MARK_IMAGE,
 		LayoutOrder = 11,
 		Gamepass = false,
 	}),
 
-	--[[Undo = CreateFreeToolData({
-		Icon = 'rbxassetid://-1',
-		LayoutOrder = 11,
-		Gamepass = false,
-	}),
-
-	Redo = CreateFreeToolData({
-		Icon = 'rbxassetid://-1',
+	Undo = CreateToolData({
+		Icon = QUESTION_MARK_IMAGE,
 		LayoutOrder = 12,
-		Gamepass = false,
-	}),]]
+		Gamepass = MarketModule.Cheapest,
+	}),
+
+	Redo = CreateToolData({
+		Icon = QUESTION_MARK_IMAGE,
+		LayoutOrder = 13,
+		Gamepass = MarketModule.Cheapest,
+	}),
+
+	Bus = CreateToolData({
+		Icon = QUESTION_MARK_IMAGE,
+		LayoutOrder = 14,
+		Gamepass = MarketModule.Cheapest,
+	}),
 }
 
 function Module.GetToolFromId( toolId : string )

@@ -105,6 +105,21 @@ function Module.UpdateWidget( dt : number )
 	end
 end
 
+function Module.UpdateFrames()
+	if not Module.IsOpen then
+		return
+	end
+	-- generate all circuit component frames
+	for componentId, _ in pairs( CircuitComponentsModule.Components ) do
+		local Frame = Module.GetComponentFrame( componentId )
+		if not Frame then
+			continue
+		end
+		local IsActive = (componentId == SystemsContainer.PlacementClient.CurrentId)
+		Frame.UIStroke.Color = IsActive and Color3.fromRGB(215, 203, 71) or Color3.fromRGB(113, 113, 113)
+	end
+end
+
 function Module.ShowWidget()
 	if Module.IsOpen then
 		return
@@ -113,14 +128,7 @@ function Module.ShowWidget()
 
 	Interface.Components.Visible = true
 
-	-- generate all circuit component frames
-	for componentId, _ in pairs( CircuitComponentsModule.Components ) do
-		local Frame = Module.GetComponentFrame( componentId )
-		if not Frame then
-			continue
-		end
-
-	end
+	Module.UpdateFrames()
 
 	Module.WidgetMaid:Give(RunService.Heartbeat:Connect(function(dt : number)
 		Module.UpdateWidget(dt)
