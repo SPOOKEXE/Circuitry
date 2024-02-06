@@ -1,3 +1,4 @@
+local CollectionService = game:GetService("CollectionService")
 local UserInputService = game:GetService("UserInputService")
 local ContextActionService = game:GetService('ContextActionService')
 
@@ -128,13 +129,13 @@ function Module.SetupSelectorClickAndDraggingBox( callback : ( boolean, { {any} 
 
 end
 
-function Module.SetupSelectorLeftClick( callback : ( Model?, Vector3?, Vector3? ) -> nil ) : { Cleanup : () -> nil }
+function Module.SetupSelectorLeftClick( callback : ( Instance?, Vector3? ) -> nil ) : { Cleanup : () -> nil }
 
 	local ClickerMaid = MaidClassModule.New()
 
 	ContextActionService:BindAction('keybinds112', function(actionName, inputState, _)
 		if actionName == 'keybinds112' and inputState == Enum.UserInputState.Begin then
-			local Model, Position = RaycasterModule.RaycastComponentAtMouse( nil )
+			local Model, Position = RaycasterModule.RaycastPlaceablePartAtMouse( nil )
 			if Model then
 				task.spawn(callback, Model, Position)
 			end
@@ -254,39 +255,49 @@ function Module.EnableWireTool()
 
 	local ActiveWires = {}
 
-	local function StartWireDragging()
+	local function StartSingleWireDragging()
 
-		while TargetModel and UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) do
+	end
 
-			local OriginPivot = TargetModel:GetPivot()
-			local TargetComponent = RaycasterModule.RaycastComponentAtMouse( 100 )
+	local function StartMultiWireDragging()
 
-			local MousePivot = nil
-			if TargetComponent then
-				-- connect to the component
-				MousePivot = TargetComponent:GetPivot()
-			else
-				MousePivot = RaycasterModule.GetMouseHit( 100 )
+		--[[
+			while TargetModel and UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) do
+				local OriginPivot = TargetModel:GetPivot()
+				local TargetComponent = RaycasterModule.RaycastComponentAtMouse( 100 )
+				local MousePivot = nil
+				if TargetComponent then
+					-- connect to the component
+					MousePivot = TargetComponent:GetPivot()
+				else
+					MousePivot = RaycasterModule.GetMouseHit( 100 )
+				end
+				-- move connection part
+				-- TODO: parallel connect for all selected
+				task.wait()
 			end
+		]]
 
-			-- move connection part
-			-- TODO: parallel connect for all selected
-
-			task.wait()
-		end
 		TargetModel = nil
 	end
 
-	local Maid = Module.SetupSelectorLeftClick(function( Model, _, _ )
-		if not Model:IsDescendantOf( PlacementsFolder ) then
+	local function OnLeftClicked( basePart, position )
+		local Model = RaycasterModule.GetComponentModelFromPart( basePart )
+		if (not Model) or (not Model:IsDescendantOf( PlacementsFolder )) then
 			return
 		end
 		if TargetModel == Model then
-			StartWireDragging()
+			if #Module.SelectedComponents > 1 then
+				StartMultiWireDragging()
+			else
+				StartSingleWireDragging()
+			end
 		else
 			TargetModel = Model
 		end
-	end)
+	end
+
+	local Maid = Module.SetupSelectorLeftClick(OnLeftClicked)
 
 	Module.ToolMaid:Give( Maid )
 
@@ -298,8 +309,9 @@ end
 
 function Module.EnableDeleteTool()
 
-	local Maid = Module.SetupSelectorLeftClick(function( Model, _, _ )
-		if Model:IsDescendantOf( PlacementsFolder ) then
+	local Maid = Module.SetupSelectorLeftClick(function( basePart, _ )
+		local Model = RaycasterModule.GetComponentModelFromPart( basePart )
+		if Model and Model:IsDescendantOf( PlacementsFolder ) then
 			ToolsBridge:FireServer( ToolConfigModule.RemoteEnums.Delete, {Model.Name} )
 		end
 	end)
