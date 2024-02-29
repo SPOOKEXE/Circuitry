@@ -30,7 +30,7 @@ local QUESTION_MARK_IMAGE = CreateImageData('rbxassetid://15668939723')
 -- // Module // --
 local Module = { }
 
-Module.RemoteEnums = { Delete = 1, }
+Module.RemoteEnums = { Place = 1, Delete = 2, Rotate = 3, Move = 4, WireSingle = 5, WireParallel = 6, }
 Module.AllowedBusBits = { 2, 4, 8, 12, 16, 24, 32, 48, 64 }
 
 Module.Tools = {

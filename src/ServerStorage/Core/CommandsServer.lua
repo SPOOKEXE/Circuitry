@@ -1,10 +1,25 @@
 
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local ReplicatedModules = require(ReplicatedStorage:WaitForChild("Modules"))
+
+local RNetModule = ReplicatedModules.Libraries.RNet
+local CommandResponseBridge = RNetModule.Create('CommandsResponse')
+
 local SystemsContainer = {}
 
 local COMMAND_SUCCESS_COLOR = Color3.new(0, 0.6, 0)
 local COMMAND_UNSUCCESSFUL_COLOR = Color3.new( 0.6, 0, 0 )
 
-local COMMAND_DICTIONARY = {
+local function CheckComponentUUIDsExist( array : {string} ) : boolean
+	for _, uuid in ipairs( array ) do
+		if not SystemsContainer.CircuitServer.GetComponentFromUUID( uuid ) then
+			return false
+		end
+	end
+	return true
+end
+
+local COMMAND_DICTIONARY : { [string] : ( Player, ...string ) -> ( string, Color3 ) } = {
 
 	default = function( LocalPlayer, ... : string )
 		return 'This is not a valid command, run !help [page] to see commands.', COMMAND_UNSUCCESSFUL_COLOR
@@ -15,10 +30,14 @@ local COMMAND_DICTIONARY = {
 		-- if not pageNumber then
 		-- 	return ''
 		-- end
-		return [[Available Commands:
-!claim		<< Claim the area where you are standing.
-!unclaim	<< Unclaim any area you have.
-		]], COMMAND_SUCCESS_COLOR
+		return [[
+Available Commands:
+!claim << Claim the area where you are standing.
+!unclaim << Unclaim any area you have.
+!con_to << Connect wires from a uuid to all target uuids.
+!con_from << Connect wires from all target uuids to the source uuid.
+!output_cache << Output the circuit cache to the console
+]], COMMAND_SUCCESS_COLOR
 	end,
 
 	claim = function( LocalPlayer, ... : string )
@@ -43,13 +62,43 @@ local COMMAND_DICTIONARY = {
 		return 'You do not have a claimed area.', COMMAND_UNSUCCESSFUL_COLOR
 	end,
 
-} :: { [string] : ( Player, ...string ) -> ( string, Color3 ) }
+	conn_to = function( LocalPlayer, ... : string )
+		local args = {...}
+		if #args <= 1 then
+			return 'You need at least 2 component uuid values.', COMMAND_UNSUCCESSFUL_COLOR
+		end
+		if not CheckComponentUUIDsExist( args ) then
+			return 'Not all UUIDs are valid.', COMMAND_UNSUCCESSFUL_COLOR
+		end
+		SystemsContainer.CircuitServer.AddConnections( table.remove(args, 1), {...}, false )
+		return 'Connections have been made.', COMMAND_SUCCESS_COLOR
+	end,
+
+	conn_from = function( LocalPlayer, ... : string )
+		local args = {...}
+		if #args <= 1 then
+			return 'You need at least 2 component uuid values.', COMMAND_UNSUCCESSFUL_COLOR
+		end
+		if not CheckComponentUUIDsExist( args ) then
+			return 'Not all UUIDs are valid.', COMMAND_UNSUCCESSFUL_COLOR
+		end
+		SystemsContainer.CircuitServer.AddConnections( table.remove(args, 1), {...}, true )
+		return 'Connections have been made.', COMMAND_SUCCESS_COLOR
+	end,
+
+	output_cache = function( LocalPlayer, ... : any )
+		print( SystemsContainer.CircuitServer.ActiveCircuitsCache )
+		return 'Command has been executed.', COMMAND_SUCCESS_COLOR
+	end,
+
+}
 
 -- // Module // --
 local Module = {}
 
 function Module.SendMessageToClient( TargetPlayer : Player, message : string, textColor3 : Color3 )
-	print( TargetPlayer.Name, message, textColor3 )
+	-- print( TargetPlayer.Name, message, textColor3 )
+	CommandResponseBridge:FireClient( TargetPlayer, message, textColor3 )
 end
 
 function Module.ParseChatCommand( LocalPlayer : Player, message : string )
@@ -57,7 +106,8 @@ function Module.ParseChatCommand( LocalPlayer : Player, message : string )
 	local command = table.remove(splits, 1)
 	local callback = COMMAND_DICTIONARY[command] or COMMAND_DICTIONARY.default
 	local responseText, responseColor = callback( LocalPlayer, unpack(splits) )
-	Module.SendMessageToClient( LocalPlayer, responseText, responseColor)
+	-- print( responseText, responseColor )
+	Module.SendMessageToClient( LocalPlayer, responseText, responseColor:ToHex() )
 end
 
 function Module.SetupPlayerCommandsHook( LocalPlayer : Player )

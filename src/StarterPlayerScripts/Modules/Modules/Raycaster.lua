@@ -51,7 +51,7 @@ function Module.RaycastPlaceablePartAtMouse( distance : number? ) : ( Instance?,
 	if rayResult and rayResult.Instance:IsDescendantOf( PlacementsFolder ) then
 		return rayResult.Instance, rayResult.Position
 	end
-	return nil, nil
+	return nil, ray.Origin + (ray.Direction * (distance or 100))
 end
 
 function Module.RaycastComponentAtMouse( distance : number? ) : ( Model?, Vector3? )
@@ -84,6 +84,8 @@ function Module.GetBasePartsInScreenBox( objects : { BasePart }, point0 : Vector
 	local topLeft = Vector2.new( math.min( point0.X, point1.X ), math.min( point0.Y, point1.Y ) )
 	local bottomRight = Vector2.new( math.max( point0.X, point1.X ), math.max( point0.Y, point1.Y ) )
 
+	LocalPlayer.PlayerGui.Debug:ClearAllChildren()
+
 	local CameraCFrame = CurrentCamera.CFrame
 	local BaseParts = {}
 	for _, Parts in ipairs( objects ) do
@@ -97,7 +99,16 @@ function Module.GetBasePartsInScreenBox( objects : { BasePart }, point0 : Vector
 			continue
 		end
 
-		local ScreenXY = CurrentCamera:WorldToScreenPoint( BoundsCFrame.Position )
+		local ScreenXY, _ = CurrentCamera:WorldToScreenPoint( BoundsCFrame.Position )
+
+		-- local Frame = Instance.new('Frame')
+		-- Frame.Name = tostring( ScreenXY )
+		-- Frame.Size = UDim2.fromOffset(20, 20)
+		-- Frame.BorderSizePixel = 0
+		-- Frame.BackgroundColor3 = Color3.fromRGB(0, 180, 0)
+		-- Frame.Position = UDim2.fromOffset( ScreenXY.X, ScreenXY.Y )
+		-- Frame.Parent = LocalPlayer.PlayerGui.Debug
+
 		if not IsPointInRect( ScreenXY, topLeft, bottomRight ) then
 			continue
 		end
@@ -108,6 +119,21 @@ end
 
 function Module.GetComponentsInScreenBox( point0 : Vector2, point1 : Vector2, ignoreList : { Model }? ) : { Model }
 	return Module.GetBasePartsInScreenBox( PlacementsFolder:GetChildren(), point0, point1, ignoreList )
+end
+
+local overlapParams = OverlapParams.new()
+overlapParams.FilterType = Enum.RaycastFilterType.Include
+function Module.GetComponentsAtPoint3D( point : Vector3 )
+	overlapParams.FilterDescendantsInstances = { PlacementsFolder }
+	local Parts = workspace:GetPartBoundsInBox( CFrame.new(point), Vector3.one * 2, overlapParams )
+	local Components = {}
+	for _, basePart in ipairs( Parts ) do
+		local Component = Module.GetComponentModelFromPart( basePart )
+		if not table.find( Components, Component ) then
+			table.insert(Components, Component)
+		end
+	end
+	return Components
 end
 
 return Module

@@ -31,8 +31,6 @@ local QUESTION_MARK_IMAGE = nil --CreateImageData( 'rbxassetid://15668939723' )
 -- // Module // --
 local Module = { }
 
-Module.RemoteEnums = { Place = 1, Delete = 2, Rotate = 3, }
-
 Module.Components = {
 
 	-- // FREE COMPONENTS // --

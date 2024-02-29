@@ -18,6 +18,7 @@ local ReplicatedModules = require(ReplicatedStorage:WaitForChild("Modules"))
 
 local ToolConfigModule = ReplicatedModules.Data.Tools
 local MaidClassModule = ReplicatedModules.Modules.Maid
+local VisualizersModule = ReplicatedModules.Utility.Visualizers
 
 local RNetModule = ReplicatedModules.Libraries.RNet
 local ToolsBridge = RNetModule.Create('PlacementTools')
@@ -29,6 +30,14 @@ local PlacementsFolder = workspace:WaitForChild('Placements')
 local CurrentCamera = workspace.CurrentCamera
 
 local TimeBeforeDraggingStarts = 0.2
+
+local BaseSelectionBox = Instance.new('SelectionBox')
+BaseSelectionBox.Name = 'SelectedBox'
+BaseSelectionBox.SurfaceTransparency = 0.8
+BaseSelectionBox.SurfaceColor3 = Color3.fromRGB(7, 93, 121)
+BaseSelectionBox.LineThickness = 0.02
+BaseSelectionBox.Transparency = 0.8
+BaseSelectionBox.Color3 = Color3.fromRGB(17, 152, 197)
 
 local function SetProperties( parent : Instance, properties : {[string] : any} ) : Instance
 	for propName, propValue in pairs( properties ) do
@@ -47,6 +56,7 @@ Module.CurrentTool = false
 Module.ToolMaid = MaidClassModule.New()
 
 Module.SelectedComponents = {}
+Module.SelectionBoxes = {}
 
 function Module.SetupSelectorClickAndDraggingBox( callback : ( boolean, { {any} } ) -> nil ) : { Cleanup : () -> nil }
 
@@ -68,15 +78,20 @@ function Module.SetupSelectorClickAndDraggingBox( callback : ( boolean, { {any} 
 	local OriginXY = Vector2.new(0, 0)
 	local IsHoldingLeft = false
 	local IsDragging = false
+	local LastXY = Vector2.zero
 
 	local function UpdateDraggerItems()
 		local NewXY = Vector2.new(LocalMouse.X, LocalMouse.Y)
+		if NewXY == LastXY then
+			return
+		end
+		LastXY = NewXY
 		Frame.Position = UDim2.fromOffset(OriginXY.X, OriginXY.Y)
 		Frame.Size = UDim2.fromOffset( NewXY.X - OriginXY.X, NewXY.Y - OriginXY.Y )
 		if (OriginXY - NewXY).Magnitude < 2 then
 			return -- only if a larger change occurs
 		end
-		local Components = RaycasterModule.GetComponentsInScreenBox( OriginXY, NewXY, Module.SelectedComponents )
+		local Components = RaycasterModule.GetComponentsInScreenBox( OriginXY, NewXY )
 		task.spawn( callback, false, Components )
 	end
 
@@ -85,9 +100,12 @@ function Module.SetupSelectorClickAndDraggingBox( callback : ( boolean, { {any} 
 		OriginXY = Vector2.new(LocalMouse.X, LocalMouse.Y)
 		task.delay(TimeBeforeDraggingStarts, function()
 			if IsHoldingLeft then
-				UpdateDraggerItems()
 				Frame.Visible = true
 				IsDragging = true
+				while IsDragging and Frame.Visible and IsHoldingLeft do
+					UpdateDraggerItems()
+					task.wait()
+				end
 			end
 		end)
 	end
@@ -104,22 +122,16 @@ function Module.SetupSelectorClickAndDraggingBox( callback : ( boolean, { {any} 
 	end
 
 	ContextActionService:BindAction('keybinds113', function(actionName, inputState, inputObject)
-		if actionName == 'keybinds113' then
-			if inputObject.UserInputType == Enum.UserInputType.MouseButton1 then
-				if inputState == Enum.UserInputState.Begin then
-					OnButton1Down()
-				else
-					OnButton1Up()
-				end
-			elseif inputObject.UserInputType == Enum.UserInputType.MouseMovement and OriginXY then
-				if IsHoldingLeft and IsDragging then
-					UpdateDraggerItems()
-				end
+		if actionName == 'keybinds113' and inputObject.UserInputType == Enum.UserInputType.MouseButton1 then
+			if inputState == Enum.UserInputState.Begin then
+				OnButton1Down()
+			else
+				OnButton1Up()
 			end
 			return Enum.ContextActionResult.Sink
 		end
 		return Enum.ContextActionResult.Pass
-	end, false, Enum.UserInputType.MouseButton1, Enum.UserInputType.MouseMovement)
+	end, false, Enum.UserInputType.MouseButton1)
 
 	DraggerMaid:Give(DraggerScreenGui, Frame, function()
 		ContextActionService:UnbindAction('keybinds113')
@@ -136,9 +148,7 @@ function Module.SetupSelectorLeftClick( callback : ( Instance?, Vector3? ) -> ni
 	ContextActionService:BindAction('keybinds112', function(actionName, inputState, _)
 		if actionName == 'keybinds112' and inputState == Enum.UserInputState.Begin then
 			local Model, Position = RaycasterModule.RaycastPlaceablePartAtMouse( nil )
-			if Model then
-				task.spawn(callback, Model, Position)
-			end
+			task.spawn(callback, Model, Position)
 			return Enum.ContextActionResult.Sink
 		end
 		return Enum.ContextActionResult.Pass
@@ -152,72 +162,79 @@ function Module.SetupSelectorLeftClick( callback : ( Instance?, Vector3? ) -> ni
 
 end
 
+function Module.ClearSelectedItems()
+	Module.SelectedComponents = {}
+	for _, box in pairs( Module.SelectionBoxes ) do
+		box:Destroy()
+	end
+	Module.SelectionBoxes = {}
+end
+
+function Module.AppendSelections( selections : { Model } )
+	for _, object in ipairs( selections ) do
+		local index = table.find( Module.SelectedComponents, object )
+		if index then
+			continue
+		end
+		local selectionBox = BaseSelectionBox:Clone()
+		selectionBox.Adornee = object
+		selectionBox.Parent = object
+		table.insert( Module.SelectedComponents, object )
+		Module.SelectionBoxes[object] = selectionBox
+	end
+end
+
 function Module.DisableAllTools()
 	Module.CurrentTool = false
 	Module.ToolMaid:Cleanup()
 end
 
 function Module.EnableSelectTool()
-	local Boxes = {}
 
-	local function DestroyBoxes()
-		for _, box in ipairs( Boxes ) do
-			box:Destroy()
-		end
-		Boxes = {}
-	end
+	local Maid = Module.SetupSelectorClickAndDraggingBox(function( clicked : boolean, baseParts : { BasePart } )
+		print( clicked and 'Clicked on' or 'Dragging Box', #baseParts )
 
-	local function ResetSelections()
-		Module.SelectedComponents = {}
-		DestroyBoxes()
-	end
-
-	--[[
-		local function RemoveSelections( selections : { Model } )
-			for _, object in ipairs( selections ) do
-				local index = table.find( Selected, object )
-				if index then
-					table.remove(Selected, index)
-					local box = table.remove(Boxes, index)
-					if box then
-						box:Destroy()
-					end
-				end
+		local models : {Model} = {}
+		for _, basePart in ipairs( baseParts ) do
+			local component = RaycasterModule.GetComponentModelFromPart(basePart)
+			if component and not table.find(models, component) then
+				table.insert(models, component)
 			end
 		end
-	]]
 
-	local BaseSelectionBox = Instance.new('SelectionBox')
-	BaseSelectionBox.Name = 'SelectedBox'
-	BaseSelectionBox.SurfaceTransparency = 0.8
-	BaseSelectionBox.SurfaceColor3 = Color3.fromRGB(7, 93, 121)
-	BaseSelectionBox.LineThickness = 0.02
-	BaseSelectionBox.Transparency = 0.8
-	BaseSelectionBox.Color3 = Color3.fromRGB(17, 152, 197)
+		-- TODO: force multi-select GUI option
+		if UserInputService:IsKeyDown( Enum.KeyCode.LeftControl ) then
+			Module.AppendSelections( models )
+			return
+		end
 
-	local function AppendSelections( selections : { Model } )
-		for _, object in ipairs( selections ) do
-			local index = table.find( Module.SelectedComponents, object )
-			if index then
+		-- select target item
+		if clicked then
+			Module.ClearSelectedItems()
+			Module.AppendSelections( models )
+			return
+		end
+
+		-- delta selections to prevent selected objects spamming outlines
+		local uuidCache = {}
+		for _, object in ipairs( models ) do
+			table.insert( uuidCache, object.Name )
+		end
+		Module.AppendSelections( models )
+
+		-- remove un-selected items
+		for object, selectionBox in pairs( Module.SelectionBoxes ) do
+			if table.find(uuidCache, object.Name) then
 				continue
 			end
-			local selectionBox = BaseSelectionBox:Clone()
-			selectionBox.Adornee = object
-			selectionBox.Parent = object
-			table.insert( Module.SelectedComponents, object )
-			table.insert( Boxes, selectionBox )
+			selectionBox:Destroy()
+			Module.SelectionBoxes[object] = nil
+			local index = table.find(Module.SelectedComponents, object)
+			if index then
+				table.remove(Module.SelectedComponents, index)
+			end
 		end
-	end
-
-	local Maid = Module.SetupSelectorClickAndDraggingBox(function( clicked : boolean, models : {Model} )
-		print( clicked and 'Clicked on' or 'Dragging Box', #models )
-		if not UserInputService:IsKeyDown( Enum.KeyCode.LeftControl ) then -- TODO: force multi-select
-			ResetSelections()
-		end
-		AppendSelections( models )
 	end)
-
-	Maid:Give(ResetSelections, DestroyBoxes)
 
 	local function CopySelectionNames()
 		local newSelections = {}
@@ -232,7 +249,7 @@ function Module.EnableSelectTool()
 			if #Module.SelectedComponents > 0 then
 				local Selections = CopySelectionNames()
 				ToolsBridge:FireServer( ToolConfigModule.RemoteEnums.Delete, Selections )
-				ResetSelections()
+				Module.ClearSelectedItems()
 			end
 		end
 	end, false, Enum.KeyCode.Delete)
@@ -246,65 +263,138 @@ end
 
 function Module.EnableTransformTool()
 	warn('Not Implemented - Transform Tool')
+	Module.ClearSelectedItems()
+
 end
 
 function Module.EnableWireTool()
-	warn('Not Implemented - Wire Tool')
-
-	local TargetModel = nil
 
 	local ActiveWires = {}
+	local ParallelMode = true
+	local Reversed = false
 
-	local function StartSingleWireDragging()
+	local function StartWireDragging( GlobalOrigin : Vector3 )
+		print('START DRAGGING')
+		local GlobalTarget = GlobalOrigin
 
-	end
+		local BeamOffset = Vector3.new(0, 0.5, 0)
+		local BeamProperties1 = {
+			Texture = Reversed and 'rbxassetid://2557513744' or 'rbxassetid://2557513411',
+			TextureSpeed = Reversed and -1 or 1,
+			Width0 = 1, Width1 = 1, TextureLength = 1, TextureMode = Enum.TextureMode.Static, Color = ColorSequence.new( Color3.new() ),
+		}
 
-	local function StartMultiWireDragging()
+		local BeamProperties2 = {
+			Color = ColorSequence.new( Color3.new() ),
+			Width0 = 0.2, Width1 = 0.2, TextureLength = 0.2, Texture = '', TextureMode = Enum.TextureMode.Static,
+		}
 
-		--[[
-			while TargetModel and UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) do
-				local OriginPivot = TargetModel:GetPivot()
-				local TargetComponent = RaycasterModule.RaycastComponentAtMouse( 100 )
-				local MousePivot = nil
-				if TargetComponent then
-					-- connect to the component
-					MousePivot = TargetComponent:GetPivot()
-				else
-					MousePivot = RaycasterModule.GetMouseHit( 100 )
-				end
-				-- move connection part
-				-- TODO: parallel connect for all selected
-				task.wait()
+		for _, Model in ipairs( Module.SelectedComponents ) do
+			local Position = Model:GetPivot().Position
+			local Beam1 = VisualizersModule.Beam(Position + BeamOffset, Position + BeamOffset, nil, BeamProperties1)
+			local Beam2 = VisualizersModule.Beam(Position + BeamOffset, Position + BeamOffset, nil, BeamProperties2)
+			-- flip arrows if in "reverse" mode
+			local WireData = { UUID = Model.Name, Origin = Position, Beam1 = Beam1, Beam2 = Beam2, }
+			table.insert(ActiveWires, WireData)
+		end
+
+		while Module.CurrentTool == 'Wire' and UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) do
+			local TargetComponent = RaycasterModule.RaycastComponentAtMouse( 100 )
+			if TargetComponent then
+				print(TargetComponent:GetFullName())
+				GlobalTarget = TargetComponent:GetPivot().Position -- snap to the component
+			else
+				print(GlobalTarget)
+				GlobalTarget = RaycasterModule.GetMouseHit( 100 ).Position
 			end
-		]]
 
-		TargetModel = nil
-	end
+			local GlobalOffset = (GlobalTarget - GlobalOrigin)
+			print(GlobalOffset, GlobalTarget, GlobalOrigin)
+			for _, WireData in ipairs( ActiveWires ) do
+				local ResultCFrame
+				if ParallelMode then
+					ResultCFrame = CFrame.new( WireData.Origin + GlobalOffset + BeamOffset )
+				else
+					ResultCFrame = CFrame.new( GlobalTarget + BeamOffset )
+				end
+				WireData.Beam1.Attachment1.WorldCFrame = ResultCFrame
+				WireData.Beam2.Attachment1.WorldCFrame = ResultCFrame
+			end
+			task.wait()
+		end
 
-	local function OnLeftClicked( basePart, position )
-		local Model = RaycasterModule.GetComponentModelFromPart( basePart )
-		if (not Model) or (not Model:IsDescendantOf( PlacementsFolder )) then
+		if Module.CurrentTool ~= 'Wire' then
+			return -- wire tool was exited
+		end
+
+		-- single wire mode
+		if not ParallelMode then
+			local TargetComponent = RaycasterModule.GetComponentsAtPoint3D( GlobalTarget )[1]
+			if not TargetComponent then
+				return
+			end
+			local SourceUUIDs = {}
+			for _, WireData in ipairs( ActiveWires ) do
+				table.insert(SourceUUIDs, WireData.UUID)
+			end
+			if table.find(SourceUUIDs, TargetComponent.Name) then
+				return -- can't connect to self
+			end
+			ToolsBridge:FireServer(ToolConfigModule.RemoteEnums.WireSingle, TargetComponent.Name, SourceUUIDs, not Reversed)
 			return
 		end
-		if TargetModel == Model then
-			if #Module.SelectedComponents > 1 then
-				StartMultiWireDragging()
-			else
-				StartSingleWireDragging()
+
+		--[[
+			-- parallel connect
+			for _, WireData in ipairs( ActiveWires ) do
+				local TargetPosition = WireData.Origin + GlobalOffset
+				local Component = RaycasterModule.GetComponentsAtPoint3D( TargetPosition )[1]
+				if not Component then
+					break
+				end
+				-- WireData.Wire:Destroy()
 			end
+			-- ToolsBridge:FireServer(ToolConfigModule.RemoteEnums.WireParallel, Sources, Targets, false)
+		]]
+		print('STOP DRAGGING')
+
+	end
+
+	local function OnLeftClicked( basePart, _ )
+		local Model = basePart and RaycasterModule.GetComponentModelFromPart( basePart )
+		if #Module.SelectedComponents == 0 then
+			if not Model then
+				return
+			end
+			Module.AppendSelections({Model})
+			StartWireDragging( basePart.Position )
+			Module.ClearSelectedItems() -- only temporary selection
 		else
-			TargetModel = Model
+			if Model then
+				StartWireDragging( basePart.Position )
+			else
+				StartWireDragging( RaycasterModule.GetMouseHit(50).Position )
+			end
 		end
+		for _, WireData in ipairs( ActiveWires ) do
+			WireData.Beam1.Attachment0:Destroy()
+			WireData.Beam1.Attachment1:Destroy()
+			WireData.Beam1:Destroy()
+			WireData.Beam2.Attachment0:Destroy()
+			WireData.Beam2.Attachment1:Destroy()
+			WireData.Beam2:Destroy()
+		end
+		ActiveWires = {}
 	end
 
 	local Maid = Module.SetupSelectorLeftClick(OnLeftClicked)
-
 	Module.ToolMaid:Give( Maid )
-
 end
 
 function Module.EnablePulseTool()
 	warn('Not Implemented - Pulse Tool')
+	Module.ClearSelectedItems()
+
 end
 
 function Module.EnableDeleteTool()
@@ -312,7 +402,7 @@ function Module.EnableDeleteTool()
 	local Maid = Module.SetupSelectorLeftClick(function( basePart, _ )
 		local Model = RaycasterModule.GetComponentModelFromPart( basePart )
 		if Model and Model:IsDescendantOf( PlacementsFolder ) then
-			ToolsBridge:FireServer( ToolConfigModule.RemoteEnums.Delete, {Model.Name} )
+			ToolsBridge:FireServer( ToolConfigModule.RemoteEnums.Delete, { Model.Name } )
 		end
 	end)
 
@@ -322,31 +412,39 @@ end
 
 function Module.EnableSavesTool()
 	warn('Not Implemented - Saves Tool')
+	Module.ClearSelectedItems()
+
 end
 
 function Module.EnableRegisterTool()
 	warn('Not Implemented - Register Tool')
+	Module.ClearSelectedItems()
 end
 
 function Module.EnableStamperTool()
 	warn('Not Implemented - Stamper Tool')
+	Module.ClearSelectedItems()
 end
 
 function Module.EnableInspectTool()
 	warn('Not Implemented - Inspect Tool')
+	Module.ClearSelectedItems()
 end
 
 function Module.EnableLayersTool()
 	warn('Not Implemented - Layers Tool')
+	Module.ClearSelectedItems()
 end
 
 function Module.EnableStatisticsTool()
 	warn('Not Implemented - Statistics Tool')
+	Module.ClearSelectedItems()
 end
 
 function Module.EnableBusTool()
 	-- option to select bits in the bus
 	warn('Not Implemented - Bus Tool')
+	Module.ClearSelectedItems()
 end
 
 --[[
@@ -354,19 +452,19 @@ end
 	function Module.UndoLast()
 		SystemsContainer.DisableAllTools()
 		SystemsContainer.PlacementClient.StopPlacement()
-
+		Module.ClearSelectedItems()
 	end
 
 	function Module.RedoLast()
 		SystemsContainer.DisableAllTools()
 		SystemsContainer.PlacementClient.StopPlacement()
-
+		Module.ClearSelectedItems()
 	end
 ]]
 
 function Module.EnableToolById( toolId : string )
 
-	local IsCurrentTool = Module.CurrentTool == toolId
+	local IsCurrentTool = (Module.CurrentTool == toolId)
 
 	Module.DisableAllTools()
 	SystemsContainer.PlacementClient.StopPlacement()
@@ -377,6 +475,8 @@ function Module.EnableToolById( toolId : string )
 	end
 
 	print('Enabling tool: ', toolId)
+	Module.CurrentTool = toolId
+
 	-- generate config options at bottom of screen
 	if toolId == 'Select' then
 		Module.EnableSelectTool()
@@ -403,6 +503,7 @@ function Module.EnableToolById( toolId : string )
 	elseif toolId == 'Bus' then
 		Module.EnableBusTool()
 	else
+		Module.CurrentTool = false
 		warn('Unsupported Tool Id: ' .. tostring(toolId))
 	end
 end
