@@ -1,3 +1,11 @@
+--[[
+
+	FIX:
+	- connections made to specific outputs in the component (basePart.Name)
+
+]]
+
+
 local Players = game:GetService("Players")
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
