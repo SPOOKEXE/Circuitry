@@ -9,6 +9,7 @@
 local Players = game:GetService("Players")
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 local ReplicatedModules = require(ReplicatedStorage:WaitForChild("Modules"))
 
 local ComponentsConfigModule = ReplicatedModules.Data.CircuitComponents
@@ -152,7 +153,6 @@ function Module.AddConnections( componentUUID : string, uuids : {string}, revers
 			table.insert( array2, targetUUID )
 		end
 	end
-
 end
 
 function Module.AddIndexedConnections( array0 : {string}, array1 : {string}, reversed : boolean )
@@ -184,8 +184,20 @@ function Module.AddIndexedConnections( array0 : {string}, array1 : {string}, rev
 	end
 end
 
+function Module.UpdateComponents( _ : number )
+
+	for sourceUUID, sourceData in pairs( Module.ActiveCircuitsCache ) do
+		-- { UUID = componentUUID, ID = componentId, Inputs = { }, Outputs = { }, }
+
+		-- local ComponentModel = 
+
+	end
+
+end
+
 function Module.Start()
 	Players.PlayerRemoving:Connect(Module.UnclaimAllPlayerComponents)
+	RunService.Heartbeat:Connect(Module.UpdateComponents)
 end
 
 function Module.Init(otherSystems)
