@@ -128,7 +128,6 @@ function Module.ParseToolCommand( LocalPlayer : Player, ... : any )
 			task.defer( Module.AttemptComponentDelete, componentId )
 		end
 		return true, 'Components have been deleted.'
-	--[[
 	elseif Job == ToolsConfigModule.RemoteEnums.Wire then
 		local connections, reversed = unpack(Args)
 		if typeof(connections) ~= 'table' then
@@ -138,7 +137,6 @@ function Module.ParseToolCommand( LocalPlayer : Player, ... : any )
 			return false, 'Invalid argument.'
 		end
 		return Module.AttemptConnections( LocalPlayer, connections, reversed )
-	]]
 	elseif Job == ToolsConfigModule.RemoteEnums.Rotate then
 		warn('rotate not implemented.')
 	elseif Job == ToolsConfigModule.RemoteEnums.Move then

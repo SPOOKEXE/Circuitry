@@ -328,40 +328,46 @@ function Module.EnableWireTool()
 			return -- wire tool was exited
 		end
 
-		-- single wire mode
-		if not ParallelMode then
-			local TargetComponent = RaycasterModule.GetComponentsAtPoint3D( GlobalTarget )[1]
-			if not TargetComponent then
+		warn('Redo remote send { {source : string, source_node : string, target : string, target_node : string} }')
+
+		--[[
+			-- single wire mode
+			if not ParallelMode then
+				local TargetComponent = RaycasterModule.GetComponentsAtPoint3D( GlobalTarget )[1]
+				if not TargetComponent then
+					return
+				end
+				local SourceUUIDs = {}
+				for _, WireData in ipairs( ActiveWires ) do
+					table.insert(SourceUUIDs, WireData.UUID)
+				end
+				if table.find(SourceUUIDs, TargetComponent.Name) then
+					return -- can't connect to self
+				end
+				ToolsBridge:FireServer(ToolConfigModule.RemoteEnums.Wire, TargetComponent.Name, SourceUUIDs, not Reversed)
 				return
 			end
-			local SourceUUIDs = {}
-			for _, WireData in ipairs( ActiveWires ) do
-				table.insert(SourceUUIDs, WireData.UUID)
-			end
-			if table.find(SourceUUIDs, TargetComponent.Name) then
-				return -- can't connect to self
-			end
-			ToolsBridge:FireServer(ToolConfigModule.RemoteEnums.WireSingle, TargetComponent.Name, SourceUUIDs, not Reversed)
-			return
-		end
 
-		local ParallelSources = {}
-		local ParallelTargets = {}
-		for _, WireData in ipairs( ActiveWires ) do
-			local Component = RaycasterModule.GetComponentsAtPoint3D( WireData.Origin + GlobalOffset )[1]
-			if not Component then
-				continue
+			local ParallelSources = {}
+			local ParallelTargets = {}
+			for _, WireData in ipairs( ActiveWires ) do
+				local Component = RaycasterModule.GetComponentsAtPoint3D( WireData.Origin + GlobalOffset )[1]
+				if not Component then
+					continue
+				end
+				if Component.Name == WireData.UUID then
+					continue
+				end
+				table.insert(ParallelSources, WireData.UUID)
+				table.insert(ParallelTargets, Component.Name)
 			end
-			if Component.Name == WireData.UUID then
-				continue
+			if #ParallelSources > 0 then
+				ToolsBridge:FireServer(ToolConfigModule.RemoteEnums.WireParallel, ParallelSources, ParallelTargets, Reversed)
 			end
-			table.insert(ParallelSources, WireData.UUID)
-			table.insert(ParallelTargets, Component.Name)
-		end
-		if #ParallelSources > 0 then
-			ToolsBridge:FireServer(ToolConfigModule.RemoteEnums.WireParallel, ParallelSources, ParallelTargets, Reversed)
-		end
+		]]
+
 		print('STOP DRAGGING')
+
 	end
 
 	local function OnLeftClicked( basePart, _ )
