@@ -107,14 +107,9 @@ function Module.AttemptComponentDelete( LocalPlayer : Player, targetUUID : strin
 	return Module.DeleteComponent(targetUUID)
 end
 
-function Module.AttemptSingleConnect( LocalPlayer : Player, source : string, targets : {string}, reversed : string )
+function Module.AttemptConnections( LocalPlayer : Player, connections : {any}, reversed : string )
 	-- TODO: permissions check
-	return SystemsContainer.CircuitServer.AddConnections( source, targets, reversed )
-end
-
-function Module.AttemptParallelConnect( LocalPlayer : Player, sources : {string}, targets : {string}, reversed : string )
-	-- TODO: permissions check
-	return SystemsContainer.CircuitServer.AddIndexedConnections( sources, targets, reversed )
+	return SystemsContainer.CircuitServer.AddConnections( connections, reversed )
 end
 
 function Module.ParseToolCommand( LocalPlayer : Player, ... : any )
@@ -133,32 +128,17 @@ function Module.ParseToolCommand( LocalPlayer : Player, ... : any )
 			task.defer( Module.AttemptComponentDelete, componentId )
 		end
 		return true, 'Components have been deleted.'
-	elseif Job == ToolsConfigModule.RemoteEnums.WireSingle then
-		local source, targets, reversed = unpack(Args)
-		if typeof(source) ~= 'string' then
-			return false, 'Invalid argument.'
-		end
-		if typeof(targets) ~= 'table' then
-			return false, 'Invalid argument.'
-		end
-		if typeof(reversed) ~= 'boolean' then
-			return false, 'Invalid argument.'
-		end
-		Module.AttemptSingleConnect( LocalPlayer, source, targets, reversed )
-		return true, 'Valid connections were made.'
-	elseif Job == ToolsConfigModule.RemoteEnums.WireParallel then
-		local sources, targets, reversed = unpack(Args)
-		if typeof(sources) ~= 'table' then
-			return false, 'Invalid argument.'
-		end
-		if typeof(targets) ~= 'table' then
+	--[[
+	elseif Job == ToolsConfigModule.RemoteEnums.Wire then
+		local connections, reversed = unpack(Args)
+		if typeof(connections) ~= 'table' then
 			return false, 'Invalid argument.'
 		end
 		if typeof(reversed) ~= 'boolean' then
 			return false, 'Invalid argument.'
 		end
-		Module.AttemptParallelConnect( LocalPlayer, sources, targets, reversed )
-		return true, 'Valid connections were made.'
+		return Module.AttemptConnections( LocalPlayer, connections, reversed )
+	]]
 	elseif Job == ToolsConfigModule.RemoteEnums.Rotate then
 		warn('rotate not implemented.')
 	elseif Job == ToolsConfigModule.RemoteEnums.Move then
